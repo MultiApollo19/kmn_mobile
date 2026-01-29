@@ -151,10 +151,11 @@ export default function AdminPage() {
           </div>
           <button 
             onClick={fetchDashboardData}
-            className="p-2.5 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-2 px-4 py-2 hover:bg-muted rounded-full transition-colors text-sm font-medium text-muted-foreground hover:text-foreground"
             title="Odśwież"
           >
-            <Clock className="w-5 h-5" />
+            <Clock className="w-4 h-4" />
+            Odśwież
           </button>
         </div>
 
