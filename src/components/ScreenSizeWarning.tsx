@@ -2,11 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { MonitorX } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 
 export default function ScreenSizeWarning() {
   const [isInvalid, setIsInvalid] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
+    // Skip check for admin routes
+    if (pathname?.startsWith('/admin')) {
+      setIsInvalid(false);
+      return;
+    }
+
     const checkScreen = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;

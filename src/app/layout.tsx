@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import ScreenSizeWarning from '../components/ScreenSizeWarning';
+import { AuthProvider } from '@/src/context/AuthContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -18,8 +19,10 @@ export default function RootLayout({
     return (
         <html lang="pl">
             <body className={`${inter.className} bg-background text-foreground antialiased`}>
-                <ScreenSizeWarning />
-                {children}
+                <AuthProvider>
+                    <ScreenSizeWarning />
+                    {children}
+                </AuthProvider>
             </body>
         </html>
     );

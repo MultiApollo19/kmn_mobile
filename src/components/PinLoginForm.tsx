@@ -3,9 +3,19 @@
 import { useState } from 'react';
 import { useAuth } from '@/src/hooks/useAuth';
 import { Loader2, Delete, ChevronRight } from 'lucide-react';
-import { cn } from '@/src/lib/utils'; // Assuming utils exists or I need to create it
+import { cn } from '@/src/lib/utils';
 
-export default function PinLoginForm() {
+interface PinLoginFormProps {
+  title?: string;
+  description?: string;
+  redirectPath?: string;
+}
+
+export default function PinLoginForm({ 
+  title = 'Witaj', 
+  description = 'Wprowadź swój kod PIN aby kontynuować',
+  redirectPath = '/'
+}: PinLoginFormProps) {
     const { loginWithPin } = useAuth();
     const [pin, setPin] = useState('');
     const [error, setError] = useState('');
@@ -30,7 +40,7 @@ export default function PinLoginForm() {
         setError('');
         setLoading(true);
         try {
-            await loginWithPin(pin);
+            await loginWithPin(pin, redirectPath);
         } catch {
             setError('Błędny PIN');
             setPin('');
@@ -44,8 +54,8 @@ export default function PinLoginForm() {
     return (
         <div className="w-full max-w-sm mx-auto p-8 flex flex-col items-center justify-center min-h-[500px]">
             <div className="mb-8 text-center space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight">Witaj</h1>
-                <p className="text-muted-foreground text-sm">Wprowadź swój kod PIN aby kontynuować</p>
+                <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+                <p className="text-muted-foreground text-sm">{description}</p>
             </div>
 
             {/* PIN Display */}
