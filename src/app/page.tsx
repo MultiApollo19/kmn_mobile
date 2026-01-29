@@ -167,6 +167,7 @@ export default function KioskHome() {
   const [purposes, setPurposes] = useState<VisitPurpose[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [activeVisits, setActiveVisits] = useState<ActiveVisit[]>([]);
+  const [usedBadgeNumbers, setUsedBadgeNumbers] = useState<string[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   // Form State
@@ -217,7 +218,19 @@ export default function KioskHome() {
       const { data: badgesData } = await supabase.from('badges').select('*').eq('is_active', true);
       if (badgesData) setBadges(badgesData);
 
-      // 3. Fetch Active Visits (filtered by user's department)
+      // 3. Fetch ALL used badges (global)
+      const { data: globalActiveVisits } = await supabase
+        .from('visits')
+        .select('badge:badges(badge_number)')
+        .is('exit_time', null);
+      
+      if (globalActiveVisits) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const used = globalActiveVisits.map((v: any) => v.badge?.badge_number).filter(Boolean);
+        setUsedBadgeNumbers(used);
+      }
+
+      // 4. Fetch Active Visits (filtered by user's department)
       if (user?.department) {
         const { data: visitsData, error } = await supabase
           .from('visits')
@@ -254,7 +267,7 @@ export default function KioskHome() {
 
   // Derived State
   const availableBadges = badges.filter(b => 
-    !activeVisits.some(v => v.badge.badge_number === b.badge_number)
+    !usedBadgeNumbers.includes(b.badge_number)
   );
 
   const handleAdmission = async (e: React.FormEvent) => {
@@ -756,7 +769,7 @@ export default function KioskHome() {
                   >
                     {badges.filter(b => 
                       // Show badge if it is NOT used by any OTHER visit (allow current visit's badge)
-                      !activeVisits.some(v => v.badge.badge_number === b.badge_number && v.id !== editingVisit.id)
+                      !usedBadgeNumbers.includes(b.badge_number) || b.badge_number === editingVisit.badge.badge_number
                     ).map(b => (
                       <option key={b.id} value={b.badge_number}>{b.badge_number}</option>
                     ))}
