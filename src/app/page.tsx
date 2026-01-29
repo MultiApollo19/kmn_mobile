@@ -331,6 +331,12 @@ export default function KioskHome() {
 
   const handleSaveEdit = async () => {
     if (!editingVisit) return;
+
+    if (editPurpose === 'Inne' && editNotes.trim().length < 3) {
+      alert("W przypadku celu wizyty 'Inne', uwagi muszą zawierać co najmniej 3 znaki.");
+      return;
+    }
+
     setSavingEdit(true);
     try {
       const purposeId = purposes.find(p => p.name === editPurpose)?.id;
@@ -763,7 +769,7 @@ export default function KioskHome() {
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700 ml-1">
-                  Uwagi
+                  Uwagi {editPurpose === 'Inne' ? <span className="text-red-500">*</span> : null}
                 </label>
                 <textarea 
                   rows={3}
@@ -782,8 +788,8 @@ export default function KioskHome() {
                 </button>
                 <button
                   onClick={handleSaveEdit}
-                  disabled={savingEdit || !editVisitorName}
-                  className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2"
+                  disabled={savingEdit || !editVisitorName || (editPurpose === 'Inne' && editNotes.trim().length < 3)}
+                  className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
                 >
                   {savingEdit ? <Loader2 className="animate-spin w-4 h-4" /> : <Save className="w-4 h-4" />}
                   <span>Zapisz</span>
