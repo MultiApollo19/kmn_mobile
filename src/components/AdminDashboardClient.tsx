@@ -58,7 +58,7 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
           entry_time,
           visitor_name,
           notes,
-          employees (
+          employees:employees!visits_employee_id_fkey (
             name,
             departments (
               name
@@ -94,9 +94,18 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
         totalStatsQuery
       ]);
 
-      if (activeRes.error) throw activeRes.error;
-      if (todayStatsRes.error) throw todayStatsRes.error;
-      if (totalStatsRes.error) throw totalStatsRes.error;
+      if (activeRes.error) {
+        console.error('Active Query Error:', activeRes.error);
+        throw activeRes.error;
+      }
+      if (todayStatsRes.error) {
+        console.error('Today Stats Query Error:', todayStatsRes.error);
+        throw todayStatsRes.error;
+      }
+      if (totalStatsRes.error) {
+        console.error('Total Stats Query Error:', totalStatsRes.error);
+        throw totalStatsRes.error;
+      }
 
       const activeVisits = activeRes.data;
       const todayVisits = todayStatsRes.data;
@@ -128,13 +137,13 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
       setVisits(activeVisits as unknown as Visit[]);
       setStats({
         active: activeVisits.length,
-        todayVisits: todayVisits.length,
+        todayVisits: todayStatsRes.data?.length || 0,
         todayAvgTime: calculateAvg(todayVisits),
         totalAvgTime: calculateAvg(totalVisits)
       });
 
     } catch (error) {
-      console.error('Error fetching visits:', error);
+      console.error('Error fetching visits full details:', JSON.stringify(error, null, 2));
     } finally {
       setLoading(false);
     }

@@ -252,7 +252,7 @@ export default function KioskHomeClient({
             notes,
             badge:badges(badge_number),
             purpose:visit_purposes(name),
-            employee:employees!inner(
+            employee:employees!visits_employee_id_fkey!inner(
               name,
               departments!inner(name)
             )
@@ -261,8 +261,13 @@ export default function KioskHomeClient({
           .eq('employee.departments.name', user.department)
           .order('entry_time', { ascending: false });
 
-        if (visitsData) setActiveVisits(visitsData as unknown as ActiveVisit[]);
-        if (error) console.error("Error fetching visits", error);
+        if (visitsData) {
+          setActiveVisits(visitsData as unknown as ActiveVisit[]);
+        }
+        
+        if (error) {
+          console.error("Error fetching visits:", JSON.stringify(error, null, 2));
+        }
       }
 
     } catch (err) {

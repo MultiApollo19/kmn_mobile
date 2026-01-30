@@ -63,7 +63,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">Menu</div>
           <NavItem href="/admin" icon={<LayoutDashboard size={20} />} label="Pulpit" active={pathname === '/admin'} />
           <NavItem href="/admin/employees" icon={<Users size={20} />} label="Pracownicy" active={pathname?.startsWith('/admin/employees')} />
-          <NavItem href="/admin/reports" icon={<FileText size={20} />} label="Raporty" active={pathname?.startsWith('/admin/reports')} />
+          <NavItem href="/admin/reports" icon={<FileText size={20} />} label="Raportowanie" active={pathname?.startsWith('/admin/reports')} />
           
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-8 mb-2 px-2">System</div>
           <NavItem href="/admin/settings" icon={<Settings size={20} />} label="Ustawienia" active={pathname?.startsWith('/admin/settings')} />
