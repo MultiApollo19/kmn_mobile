@@ -281,6 +281,17 @@ export default function KioskHomeClient({
     !usedBadgeNumbers.includes(b.badge_number)
   );
 
+  const revalidateCache = async () => {
+    try {
+      // Revalidate 'visits' (for getGlobalActiveVisits) and 'dashboard' (for admin)
+      // Note: In a real app, use an environment variable for the secret or a more secure method.
+      await fetch('/api/revalidate?tag=visits&secret=super-secret-revalidation-token');
+      await fetch('/api/revalidate?tag=dashboard&secret=super-secret-revalidation-token');
+    } catch (err) {
+      console.error('Failed to revalidate cache', err);
+    }
+  };
+
   const handleAdmission = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !visitorName || !selectedPurpose || !selectedBadge || !signature) {
@@ -318,6 +329,7 @@ export default function KioskHomeClient({
       setNotes('');
       setSignature('');
       await fetchData();
+      await revalidateCache();
 
     } catch (err) {
       console.error("Error submitting visit:", err);
@@ -338,6 +350,7 @@ export default function KioskHomeClient({
 
       if (error) throw error;
       await fetchData();
+      await revalidateCache();
     } catch (err) {
       console.error("Error checking out:", err);
       alert("Nie udało się zakończyć wizyty.");
@@ -379,6 +392,7 @@ export default function KioskHomeClient({
       if (error) throw error;
       
       await fetchData();
+      await revalidateCache();
       setEditingVisit(null);
     } catch (err) {
       console.error("Error updating visit:", err);

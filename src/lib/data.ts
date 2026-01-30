@@ -2,8 +2,8 @@ import { unstable_cache } from 'next/cache';
 import { supabase } from './supabase';
 
 // Cache configuration
-export const REVALIDATE_LONG = 3600; // 1 hour
-export const REVALIDATE_SHORT = 30;  // 30 seconds
+export const REVALIDATE_LONG = false; // Cache indefinitely until revalidated by tag
+export const REVALIDATE_SHORT = false; // Cache indefinitely until revalidated by tag
 
 export const getVisitPurposes = unstable_cache(
   async () => {
@@ -124,5 +124,5 @@ export const getAdminDashboardData = unstable_cache(
     };
   },
   ['admin_dashboard_data'],
-  { revalidate: 30, tags: ['dashboard'] }
+  { revalidate: REVALIDATE_SHORT, tags: ['dashboard'] }
 );

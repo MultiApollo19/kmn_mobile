@@ -2,7 +2,7 @@ import AdminDashboardClient, { Visit } from '@/src/components/AdminDashboardClie
 import { getAdminDashboardData } from '@/src/lib/data';
 
 // Ensure the page is revalidated periodically to pick up new data (ISR)
-export const revalidate = 30;
+// export const revalidate = 30;
 
 export default async function AdminPage() {
   const data = await getAdminDashboardData();
