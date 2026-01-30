@@ -34,6 +34,9 @@ type VisitHistory = {
       name: string;
     } | null;
   } | null;
+  exit_employees: {
+    name: string;
+  } | null;
   visit_purposes: {
     name: string;
   } | null;
@@ -72,11 +75,14 @@ export default function ReportsPage() {
           visitor_name,
           notes,
           signature,
-          employees (
+          employees:employees!employee_id (
             name,
             departments (
               name
             )
+          ),
+          exit_employees:employees!exit_employee_id (
+            name
           ),
           visit_purposes (
             name
@@ -665,7 +671,7 @@ export default function ReportsPage() {
 
                            <div className="space-y-3 mb-6">
                               <div>
-                                 <div className="text-xs text-slate-500">Imię i nazwisko</div>
+                                 <div className="text-xs text-slate-500">Wpuszczający</div>
                                  <div className="font-medium text-slate-900">{selectedVisit.employees?.name}</div>
                               </div>
                               <div>
@@ -675,6 +681,19 @@ export default function ReportsPage() {
                                     {selectedVisit.employees?.departments?.name}
                                  </div>
                               </div>
+
+                              {selectedVisit.exit_time && (
+                                <div className="pt-3 mt-3 border-t border-slate-100">
+                                   <div className="text-xs text-slate-500">Wypuszczający</div>
+                                   <div className="font-medium text-slate-900 mt-1">
+                                      {selectedVisit.exit_employees?.name 
+                                        ? (selectedVisit.exit_employees.name === selectedVisit.employees?.name 
+                                            ? <span className="text-slate-500 italic text-sm">Ta sama osoba wpuściła i wypuściła</span> 
+                                            : selectedVisit.exit_employees.name)
+                                        : <span className="text-slate-400 italic text-sm">Brak danych o wypuszczającym</span>}
+                                   </div>
+                                </div>
+                              )}
                            </div>
 
                            {selectedVisit.signature && (

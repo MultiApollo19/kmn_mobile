@@ -345,7 +345,10 @@ export default function KioskHomeClient({
     try {
       const { error } = await supabase
         .from('visits')
-        .update({ exit_time: new Date().toISOString() })
+        .update({ 
+          exit_time: new Date().toISOString(),
+          exit_employee_id: user?.id
+        })
         .eq('id', visitId);
 
       if (error) throw error;
@@ -703,7 +706,7 @@ export default function KioskHomeClient({
                            </div>
                            {visit.notes ? (
                              <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-100 text-xs text-amber-800 italic">
-                               "{visit.notes}"
+                               &quot;{visit.notes}&quot;
                              </div>
                            ): (
                              <div className="mt-3 p-5 bg-amber-50 rounded-lg border border-amber-100 text-xs text-amber-800 italic">
