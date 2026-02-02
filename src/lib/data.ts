@@ -45,8 +45,7 @@ export const getGlobalActiveVisits = unstable_cache(
   { revalidate: REVALIDATE_SHORT, tags: ['visits'] }
 );
 
-export const getAdminDashboardData = unstable_cache(
-  async () => {
+export const getAdminDashboardData = async () => {
     // 1. Fetch Active Visits (Detailed)
     const activeQuery = supabase
       .from('visits')
@@ -92,6 +91,7 @@ export const getAdminDashboardData = unstable_cache(
     ]);
 
     // Calculate Stats
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const calculateAvg = (data: any[]) => {
       const completed = data.filter(v => v.exit_time);
       if (completed.length === 0) return '-';
@@ -122,7 +122,4 @@ export const getAdminDashboardData = unstable_cache(
         totalAvgTime: calculateAvg(totalStatsRes.data || [])
       }
     };
-  },
-  ['admin_dashboard_data'],
-  { revalidate: REVALIDATE_SHORT, tags: ['dashboard'] }
-);
+  };
