@@ -17,9 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Trigger revalidation for the specific tag
-        // Trigger revalidation for the specific tag
-    // @ts-expect-error - Next.js type definition mismatch in this env
-    revalidateTag(tag);
+    revalidateTag(tag, 'max');
 
     return NextResponse.json({ revalidated: true, now: Date.now() });
   } catch (err) {
@@ -42,9 +40,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: 'Tag is required' }, { status: 400 });
   }
 
-      // Trigger revalidation for the specific tag
-    // @ts-expect-error - Next.js type definition mismatch in this env
-    revalidateTag(tag);
+  // Trigger revalidation for the specific tag
+  revalidateTag(tag, 'max');
 
   return NextResponse.json({ revalidated: true, now: Date.now() });
 }

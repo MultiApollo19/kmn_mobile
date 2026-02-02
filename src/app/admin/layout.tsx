@@ -53,7 +53,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-muted/20 flex font-sans text-foreground">
       {/* Sidebar */}
-      <aside className="w-64 bg-card border-r border-border flex-shrink-0 hidden md:flex flex-col">
+      <aside className="w-64 bg-card border-r border-border shrink-0 hidden md:flex flex-col">
         <div className="p-6 border-b border-border">
           <h1 className="text-xl font-bold tracking-tight">Panel administracyjny</h1>
           <p className="text-xs text-muted-foreground mt-1">System zarządzania interesantami</p>
