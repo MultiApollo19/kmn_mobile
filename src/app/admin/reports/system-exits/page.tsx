@@ -217,7 +217,7 @@ export default function SystemExitsPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-2 text-red-600 mb-2">
         <AlertTriangle className="w-5 h-5" />
-        <h2 className="text-xl font-bold text-slate-900">Niezamknięte wizyty (Auto-Exit)</h2>
+        <h2 className="text-xl font-bold text-slate-900">Niezamknięte wizyty</h2>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center bg-card p-4 rounded-xl border border-border shadow-sm">

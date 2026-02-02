@@ -252,7 +252,26 @@ export default function HistoryReportPage() {
       doc.text('Raport Historii Wizyt', 14, 15);
       
       doc.setFontSize(10);
-      doc.text(`Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm')}`, 14, 22);
+      const genDate = `Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm')}`;
+      doc.text(genDate, 14, 22);
+
+      // Determine Date Range Text
+      let rangeText = '';
+      const now = new Date();
+      if (dateRange === 'today') {
+         rangeText = `Zakres: ${format(now, 'dd.MM.yyyy')}`;
+      } else if (dateRange === 'yesterday') {
+         rangeText = `Zakres: ${format(subDays(now, 1), 'dd.MM.yyyy')}`;
+      } else if (dateRange === 'week') {
+         rangeText = `Zakres: ${format(subDays(now, 7), 'dd.MM.yyyy')} - ${format(now, 'dd.MM.yyyy')}`;
+      } else if (dateRange === 'custom' && customStart && customEnd) {
+         rangeText = `Zakres: ${format(new Date(customStart), 'dd.MM.yyyy')} - ${format(new Date(customEnd), 'dd.MM.yyyy')}`;
+      }
+      
+      // Right align date range
+      const pageWidth = doc.internal.pageSize.width;
+      const rangeTextWidth = doc.getTextWidth(rangeText);
+      doc.text(rangeText, pageWidth - 14 - rangeTextWidth, 22);
 
       const tableData = visitsWithSignatures.map((v, index) => [
         index + 1,
@@ -268,7 +287,7 @@ export default function HistoryReportPage() {
 
       autoTable(doc, {
         theme: 'grid',
-        head: [['Lp.', 'Czas przybycia', 'Imię i nazwisko', 'Cel', 'Ident.', 'Przyjmujący', 'Podpis', 'Wyjście', 'Uwagi']],
+        head: [['Lp.', 'Czas przybycia', 'Imię i nazwisko interesanta', 'Cel wizyty', 'Identyfikator', 'Pracownik pzyjmujący', 'Podpis pracownika', 'Czas wyjścia', 'Uwagi']],
         body: tableData,
         startY: 25,
         styles: { fontSize: 8, cellPadding: 2, font: 'Roboto', valign: 'middle', overflow: 'linebreak', lineWidth: 0.1 },
@@ -288,6 +307,33 @@ export default function HistoryReportPage() {
           }
         }
       });
+
+      // Summary Stats
+      const totalVisits = visitsWithSignatures.length;
+      let totalDurationMins = 0;
+      let completedCount = 0;
+      
+      visitsWithSignatures.forEach(v => {
+         if (v.exit_time) {
+            totalDurationMins += (new Date(v.exit_time).getTime() - new Date(v.entry_time).getTime()) / 60000;
+            completedCount++;
+         }
+      });
+      
+      const avgDurationMins = completedCount > 0 ? Math.round(totalDurationMins / completedCount) : 0;
+      const avgH = Math.floor(avgDurationMins / 60);
+      const avgM = avgDurationMins % 60;
+      const avgDurationText = `${avgH}h ${avgM}m`;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const finalY = (doc as any).lastAutoTable.finalY + 10;
+      
+      doc.setFontSize(10);
+      doc.setFont('Roboto', 'bold');
+      doc.text('Podsumowanie:', 14, finalY);
+      doc.setFont('Roboto', 'normal');
+      doc.text(`Liczba wizyt w okresie: ${totalVisits}`, 14, finalY + 5);
+      doc.text(`Średni czas trwania wizyty: ${avgDurationText}`, 14, finalY + 10);
 
       doc.save(`historia_wizyt_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
     } catch (err) {
