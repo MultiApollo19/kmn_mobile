@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
     const { tag, secret } = await request.json();
 
     // Validate the secret to prevent unauthorized revalidation
-    const expectedSecret = process.env.REVALIDATION_TOKEN || 'super-secret-revalidation-token';
+        const expectedSecret = process.env.NEXT_PUBLIC_REVALIDATION_TOKEN;
     
     if (secret !== expectedSecret) {
       return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   const tag = request.nextUrl.searchParams.get('tag');
   const secret = request.nextUrl.searchParams.get('secret');
 
-  const expectedSecret = process.env.REVALIDATION_TOKEN || 'super-secret-revalidation-token';
+      const expectedSecret = process.env.NEXT_PUBLIC_REVALIDATION_TOKEN;
 
   if (secret !== expectedSecret) {
     return NextResponse.json({ message: 'Invalid token' }, { status: 401 });

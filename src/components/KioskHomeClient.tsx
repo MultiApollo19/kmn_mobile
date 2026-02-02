@@ -289,9 +289,13 @@ export default function KioskHomeClient({
   const revalidateCache = async () => {
     try {
       // Revalidate 'visits' (for getGlobalActiveVisits) and 'dashboard' (for admin)
-      // Note: In a real app, use an environment variable for the secret or a more secure method.
-      await fetch('/api/revalidate?tag=visits&secret=super-secret-revalidation-token');
-      await fetch('/api/revalidate?tag=dashboard&secret=super-secret-revalidation-token');
+      const secret = process.env.NEXT_PUBLIC_REVALIDATION_TOKEN;
+      if (!secret) {
+         console.warn("Missing NEXT_PUBLIC_REVALIDATION_TOKEN - skipping revalidation");
+         return;
+      }
+      await fetch(`/api/revalidate?tag=visits&secret=${secret}`);
+      await fetch(`/api/revalidate?tag=dashboard&secret=${secret}`);
     } catch (err) {
       console.error('Failed to revalidate cache', err);
     }

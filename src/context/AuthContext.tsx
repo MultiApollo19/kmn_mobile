@@ -94,7 +94,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // 3. Authenticate with Supabase (Required for RLS)
     // Password remains based on PIN for this session (Supabase Auth hashes it)
-    const authPassword = `kmn_mobile_${pin}`;
+    const prefix = process.env.NEXT_PUBLIC_AUTH_PASSWORD_PREFIX;
+    if (!prefix) {
+      console.error('Missing NEXT_PUBLIC_AUTH_PASSWORD_PREFIX');
+      throw new Error('Błąd konfiguracji systemu (Auth Prefix)');
+    }
+    const authPassword = `${prefix}${pin}`;
 
     try {
       // Try to sign in
