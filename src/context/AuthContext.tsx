@@ -67,12 +67,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loginWithPin = async (pin: string, redirectPath: string = '/') => {
-    // 1. Check Employees Table (to validate PIN and get Metadata)
+    // 1. Verify PIN via RPC (Secure Lookup)
+    // We use an RPC to check the hash without exposing it to the client
     const { data: empData, error: empError } = await supabase
-      .from('employees')
-      .select('*, departments(name)')
-      .eq('pin', pin)
-      .single();
+      .rpc('verify_employee_pin', { p_pin: pin })
+      .maybeSingle();
 
     let userData: UserType | null = null;
     let authEmail = '';
@@ -82,10 +81,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: empData.id,
         name: empData.name,
         role: empData.role,
-        department: empData.departments?.name,
+        department: empData.department_name,
         type: 'employee',
       };
-      authEmail = `emp_${pin}@kmn.local`;
+      // Use ID in email to be immutable and secure (pin changes won't change email)
+      authEmail = `emp_${empData.id}@kmn.local`;
     }
 
     if (!userData || !authEmail) {
@@ -93,8 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // 3. Authenticate with Supabase (Required for RLS)
-    // Strategy: Map PIN to a predictable Email/Password
-    // Password will be `kmn_mobile_${pin}`
+    // Password remains based on PIN for this session (Supabase Auth hashes it)
     const authPassword = `kmn_mobile_${pin}`;
 
     try {

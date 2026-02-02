@@ -71,16 +71,19 @@ export const getAdminDashboardData = async () => {
       .order('entry_time', { ascending: false });
 
     // 2. Fetch Stats
+    // We use visit_history for Today's stats to ensure we include finished/deleted visits
     const now = new Date();
+    // Start of day in UTC (Server Time). Ideally we'd use client timezone, but this is server-side.
+    // We fetch a bit more (e.g. from yesterday) and filter if needed, or just rely on UTC day.
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
     
     const todayStatsQuery = supabase
-      .from('visits')
-      .select('entry_time, exit_time')
+      .from('visit_history')
+      .select('visit_id, entry_time, exit_time')
       .gte('entry_time', startOfDay);
 
     const totalStatsQuery = supabase
-      .from('visits')
+      .from('visits') // We keep total stats on visits table for performance, knowing it might miss deleted ones
       .select('entry_time, exit_time')
       .not('exit_time', 'is', null);
 
@@ -89,6 +92,21 @@ export const getAdminDashboardData = async () => {
       todayStatsQuery, 
       totalStatsQuery
     ]);
+
+    // Deduplicate history for Today's Stats
+    const historyData = todayStatsRes.data || [];
+    const uniqueTodayVisitsMap = new Map();
+    historyData.forEach((v: any) => {
+        // We want the latest state (usually has exit_time if finished)
+        // Since we didn't order by recorded_at, we might get mixed order.
+        // But entry_time is constant for a visit_id.
+        // We prioritize the one with exit_time.
+        const existing = uniqueTodayVisitsMap.get(v.visit_id);
+        if (!existing || (!existing.exit_time && v.exit_time)) {
+            uniqueTodayVisitsMap.set(v.visit_id, v);
+        }
+    });
+    const uniqueTodayVisits = Array.from(uniqueTodayVisitsMap.values());
 
     // Calculate Stats
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -117,8 +135,8 @@ export const getAdminDashboardData = async () => {
       visits: activeRes.data || [],
       stats: {
         active: activeRes.data?.length || 0,
-        todayVisits: todayStatsRes.data?.length || 0,
-        todayAvgTime: calculateAvg(todayStatsRes.data || []),
+        todayVisits: uniqueTodayVisits.length,
+        todayAvgTime: calculateAvg(uniqueTodayVisits),
         totalAvgTime: calculateAvg(totalStatsRes.data || [])
       }
     };

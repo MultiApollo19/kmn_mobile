@@ -79,8 +79,8 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
       
       const todayStatsQuery = supabase
-        .from('visits')
-        .select('entry_time, exit_time')
+        .from('visit_history')
+        .select('visit_id, entry_time, exit_time')
         .gte('entry_time', startOfDay);
 
       const totalStatsQuery = supabase
@@ -108,7 +108,19 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
       }
 
       const activeVisits = activeRes.data;
-      const todayVisits = todayStatsRes.data;
+      
+      // Deduplicate history for Today's Stats
+      const historyData = todayStatsRes.data || [];
+      const uniqueTodayVisitsMap = new Map();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      historyData.forEach((v: any) => {
+          const existing = uniqueTodayVisitsMap.get(v.visit_id);
+          if (!existing || (!existing.exit_time && v.exit_time)) {
+              uniqueTodayVisitsMap.set(v.visit_id, v);
+          }
+      });
+      const todayVisits = Array.from(uniqueTodayVisitsMap.values());
+      
       const totalVisits = totalStatsRes.data;
 
       // Calculate Stats
@@ -137,7 +149,7 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
       setVisits(activeVisits as unknown as Visit[]);
       setStats({
         active: activeVisits.length,
-        todayVisits: todayStatsRes.data?.length || 0,
+        todayVisits: todayVisits.length,
         todayAvgTime: calculateAvg(todayVisits),
         totalAvgTime: calculateAvg(totalVisits)
       });

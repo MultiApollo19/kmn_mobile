@@ -2,7 +2,7 @@
   PRODUCTION UPDATE SCRIPT
   Generated: 2026-02-02
   Description: Consolidates all schema changes, fixes permissions, replaces RLS policies, 
-  and removes obsolete columns/tables.
+  and removes obsolete columns/tables. Now includes PIN Hashing security upgrade.
   
   INSTRUCTIONS:
   1. Paste this entire script into the Supabase SQL Editor.
@@ -115,7 +115,123 @@ CREATE TRIGGER on_visit_change_history
 
 
 -- ==========================================
--- 3. HELPER FUNCTIONS & AUTH
+-- 3. SECURITY UPGRADE (PIN HASHING)
+-- ==========================================
+
+-- Enable pgcrypto for hashing - ensure it's in 'extensions' schema which is best practice in Supabase
+CREATE SCHEMA IF NOT EXISTS extensions;
+CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;
+
+-- 3.1. Hash Helper Function
+-- Uses a deterministic salt (pepper) so we can enforce uniqueness on the hash.
+CREATE OR REPLACE FUNCTION public.get_pin_hash(p_pin text)
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+SECURITY DEFINER
+AS $$
+  -- 'kmn_secure_pepper_2026' is the fixed secret to prevent simple rainbow table attacks
+  -- We use extensions.digest to be safe about schema location.
+  -- We pass TEXT to digest, and cast the algorithm name to text explicitly.
+  SELECT encode(extensions.digest(p_pin || 'kmn_secure_pepper_2026', 'sha256'::text), 'hex');
+$$;
+
+-- 3.2. Schema Migration: Convert PIN to Hash
+-- Add new column
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS pin_hash text;
+
+-- Migrate existing data: Hash the plain PINs
+DO $$
+BEGIN
+  -- Check if 'pin' column exists before trying to read it
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'pin') THEN
+    UPDATE public.employees 
+    SET pin_hash = public.get_pin_hash(pin) 
+    WHERE pin_hash IS NULL AND pin IS NOT NULL;
+  END IF;
+END $$;
+
+-- Drop old plain text column
+ALTER TABLE public.employees DROP COLUMN IF EXISTS pin;
+
+-- Enforce Unique PINs (via Unique Hash)
+ALTER TABLE public.employees DROP CONSTRAINT IF EXISTS employees_pin_hash_key;
+ALTER TABLE public.employees ADD CONSTRAINT employees_pin_hash_key UNIQUE (pin_hash);
+
+-- 3.3. Secure Login RPC
+-- Returns employee data only if PIN hash matches
+CREATE OR REPLACE FUNCTION public.verify_employee_pin(p_pin text)
+RETURNS TABLE (
+  id bigint,
+  name text,
+  role text,
+  department_name text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT e.id, e.name, e.role, d.name as department_name
+  FROM public.employees e
+  LEFT JOIN public.departments d ON e.department_id = d.id
+  WHERE e.pin_hash = public.get_pin_hash(p_pin);
+END;
+$$;
+
+-- 3.4. Secure Employee Management RPC
+-- Handles hashing and uniqueness checks on Insert/Update
+CREATE OR REPLACE FUNCTION public.upsert_employee(
+  p_name text,
+  p_role text,
+  p_department_id bigint DEFAULT NULL,
+  p_pin text DEFAULT NULL,
+  p_id bigint DEFAULT NULL
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_hash text;
+  v_emp public.employees;
+BEGIN
+  -- Hash PIN if provided
+  IF p_pin IS NOT NULL AND p_pin <> '' THEN
+    v_hash := public.get_pin_hash(p_pin);
+  END IF;
+
+  IF p_id IS NOT NULL THEN
+    -- Update existing employee
+    UPDATE public.employees
+    SET name = p_name,
+        role = p_role,
+        department_id = p_department_id,
+        -- Update PIN only if a new one was provided
+        pin_hash = COALESCE(v_hash, pin_hash)
+    WHERE id = p_id
+    RETURNING * INTO v_emp;
+  ELSE
+    -- Insert new employee
+    IF v_hash IS NULL THEN
+        RAISE EXCEPTION 'PIN jest wymagany dla nowego pracownika.';
+    END IF;
+
+    INSERT INTO public.employees (name, pin_hash, role, department_id)
+    VALUES (p_name, v_hash, p_role, p_department_id)
+    RETURNING * INTO v_emp;
+  END IF;
+
+  RETURN row_to_json(v_emp);
+EXCEPTION
+  WHEN unique_violation THEN
+    RAISE EXCEPTION 'PIN jest już zajęty przez innego pracownika.';
+END;
+$$;
+
+
+-- ==========================================
+-- 4. HELPER FUNCTIONS & AUTH
 -- ==========================================
 
 -- Auto-confirm users (Useful for API-created users)
@@ -132,7 +248,7 @@ CREATE TRIGGER on_auth_user_created_auto_confirm
 BEFORE INSERT ON auth.users
 FOR EACH ROW EXECUTE PROCEDURE public.auto_confirm_user();
 
--- Get App Role
+-- Get App Role (Updated to use ID-based email or Admin)
 CREATE OR REPLACE FUNCTION public.get_app_role()
 RETURNS text
 LANGUAGE plpgsql
@@ -140,21 +256,34 @@ SECURITY DEFINER
 AS $$
 DECLARE
   v_email text;
-  v_pin text;
+  v_id_part text;
+  v_id bigint;
   v_role text;
 BEGIN
   IF auth.role() != 'authenticated' THEN
     RETURN 'anon';
   END IF;
   v_email := auth.email();
-  v_pin := split_part(split_part(v_email, '@', 1), '_', 2);
   
-  IF v_email LIKE 'emp_%' THEN
-    SELECT role INTO v_role FROM public.employees WHERE pin = v_pin;
-    RETURN COALESCE(v_role, 'user');
-  ELSIF v_email = 'admin@kmn.local' THEN
+  -- Admin check
+  IF v_email = 'admin@kmn.local' THEN
     RETURN 'admin';
   END IF;
+
+  -- Employee check (Format: emp_{id}@kmn.local)
+  IF v_email LIKE 'emp_%' THEN
+    v_id_part := split_part(split_part(v_email, '@', 1), '_', 2);
+    
+    BEGIN
+      v_id := v_id_part::bigint;
+      SELECT role INTO v_role FROM public.employees WHERE id = v_id;
+      RETURN COALESCE(v_role, 'user');
+    EXCEPTION WHEN OTHERS THEN
+      -- Fallback or invalid format
+      RETURN 'user';
+    END;
+  END IF;
+
   RETURN 'user';
 END;
 $$;
@@ -169,7 +298,7 @@ $$;
 
 
 -- ==========================================
--- 4. RLS POLICIES (RESET & REPLACE)
+-- 5. RLS POLICIES (RESET & REPLACE)
 -- ==========================================
 
 -- Enable RLS
@@ -186,9 +315,7 @@ DROP POLICY IF EXISTS "Allow public read access" ON public.departments;
 DROP POLICY IF EXISTS "Allow public full access" ON public.departments;
 DROP POLICY IF EXISTS "Admin Manage Departments" ON public.departments;
 
--- Everyone can read (needed for login selection)
 CREATE POLICY "Public Read Departments" ON public.departments FOR SELECT USING (true);
--- Only Admin can modify
 CREATE POLICY "Admin Manage Departments" ON public.departments FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 
@@ -198,14 +325,17 @@ DROP POLICY IF EXISTS "Allow public read access" ON public.employees;
 DROP POLICY IF EXISTS "Allow public full access" ON public.employees;
 DROP POLICY IF EXISTS "Admin Manage Employees" ON public.employees;
 
--- Everyone can read (needed for validation)
+-- Everyone can read names/roles (needed for validation/UI)
+-- Note: 'pin_hash' column is hidden by not selecting it, but RLS allows row access.
 CREATE POLICY "Public Read Employees" ON public.employees FOR SELECT USING (true);
--- Only Admin can modify
+-- Only Admin can modify via standard API (though we use RPC mostly now)
 CREATE POLICY "Admin Manage Employees" ON public.employees FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 
 -- --- VISITS ---
 DROP POLICY IF EXISTS "Public Read Visits" ON public.visits;
+DROP POLICY IF EXISTS "Public Insert Visits" ON public.visits;
+DROP POLICY IF EXISTS "Public Update Visits" ON public.visits;
 DROP POLICY IF EXISTS "Allow public read access" ON public.visits;
 DROP POLICY IF EXISTS "Allow public insert access" ON public.visits;
 DROP POLICY IF EXISTS "Allow public update access" ON public.visits;
@@ -213,14 +343,9 @@ DROP POLICY IF EXISTS "Auth Insert Visits" ON public.visits;
 DROP POLICY IF EXISTS "Auth Update Visits" ON public.visits;
 DROP POLICY IF EXISTS "Admin Delete Visits" ON public.visits;
 
--- Public (Kiosk) needs Read/Insert
 CREATE POLICY "Public Read Visits" ON public.visits FOR SELECT USING (true);
 CREATE POLICY "Public Insert Visits" ON public.visits FOR INSERT WITH CHECK (true);
--- Public (Kiosk) needs Update to finish visit? 
--- If Kiosk finishes visit, it needs update. If only Admin/Employee finishes, restrict it.
--- Assuming Kiosk runs unauthenticated for "End Visit", we allow public update.
 CREATE POLICY "Public Update Visits" ON public.visits FOR UPDATE USING (true) WITH CHECK (true);
--- Only Admin can Delete
 CREATE POLICY "Admin Delete Visits" ON public.visits FOR DELETE TO authenticated USING (public.is_admin());
 
 
@@ -230,11 +355,11 @@ DROP POLICY IF EXISTS "Allow public read access" ON public.visit_history;
 DROP POLICY IF EXISTS "Admin Manage History" ON public.visit_history;
 
 CREATE POLICY "Public Read History" ON public.visit_history FOR SELECT USING (true);
--- History is managed by system (triggers), but Admin might need to fix things manually
 CREATE POLICY "Admin Manage History" ON public.visit_history FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 
 -- --- CONFIG (Badges, Purposes) ---
+DROP POLICY IF EXISTS "Public Read Badges" ON public.badges;
 DROP POLICY IF EXISTS "Public Read Config" ON public.badges;
 DROP POLICY IF EXISTS "Allow public read access" ON public.badges;
 DROP POLICY IF EXISTS "Admin Manage Badges" ON public.badges;
@@ -251,7 +376,7 @@ CREATE POLICY "Admin Manage Purposes" ON public.visit_purposes FOR ALL TO authen
 
 
 -- ==========================================
--- 5. USER LOGS (LOGIN TRACKING)
+-- 6. USER LOGS (LOGIN TRACKING)
 -- ==========================================
 CREATE TABLE IF NOT EXISTS public.user_logs (
   id bigint generated by default as identity primary key,
@@ -268,4 +393,3 @@ DROP POLICY IF EXISTS "Allow public read access" ON public.user_logs;
 
 CREATE POLICY "Public Insert Logs" ON public.user_logs FOR INSERT WITH CHECK (true);
 CREATE POLICY "Public Read Logs" ON public.user_logs FOR SELECT USING (true);
-

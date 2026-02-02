@@ -14,7 +14,7 @@ type Department = {
 type Employee = {
   id: number;
   name: string;
-  pin: string;
+  pin_hash?: string; // Changed from pin: string
   department_id: number | null;
   role: 'user' | 'admin' | 'department_admin';
   departments: Department | null;
@@ -75,7 +75,7 @@ export default function EmployeesPage() {
     setIsEditing(emp.id);
     setFormData({ 
       name: emp.name, 
-      pin: emp.pin, 
+      pin: '', // Do not fill existing PIN (it's hashed)
       department_id: emp.department_id?.toString() || '', 
       role: emp.role 
     });
@@ -109,38 +109,33 @@ export default function EmployeesPage() {
     e.preventDefault();
     setError(null);
 
-    if (!formData.name || !formData.pin) {
-      setError('Nazwa i PIN są wymagane');
+    if (!formData.name) {
+      setError('Nazwa jest wymagana');
       return;
     }
+    
+    // Validation: PIN is required for new users, optional for editing
+    if (isAdding && !formData.pin) {
+        setError('PIN jest wymagany dla nowego pracownika');
+        return;
+    }
 
-    if (formData.pin.length < 4) {
+    if (formData.pin && formData.pin.length < 4) {
         setError('PIN musi mieć co najmniej 4 znaki');
         return;
     }
 
-    const payload = {
-      name: formData.name,
-      pin: formData.pin,
-      department_id: formData.department_id ? parseInt(formData.department_id) : null,
-      role: formData.role
-    };
-
     try {
-      if (isAdding) {
-        const { error } = await supabase
-          .from('employees')
-          .insert([payload]);
-        
-        if (error) throw error;
-      } else if (isEditing) {
-        const { error } = await supabase
-          .from('employees')
-          .update(payload)
-          .eq('id', isEditing);
-        
-        if (error) throw error;
-      }
+      // Use RPC for safe upsert with hashing
+      const { error } = await supabase.rpc('upsert_employee', {
+        p_name: formData.name,
+        p_pin: formData.pin, // Can be empty if editing
+        p_role: formData.role,
+        p_department_id: formData.department_id ? parseInt(formData.department_id) : null,
+        p_id: isEditing || null
+      });
+
+      if (error) throw error;
 
       handleCancel();
       fetchData();
@@ -218,7 +213,7 @@ export default function EmployeesPage() {
                         </span>
                     </td>
                     <td className="px-6 py-4 font-mono text-muted-foreground">
-                        {emp.pin ? '••••' : '-'}
+                        {emp.pin_hash ? '••••' : <span className="text-destructive text-xs">Brak PIN</span>}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -264,14 +259,19 @@ export default function EmployeesPage() {
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-1">PIN Osobisty</label>
+            <label className="block text-sm font-medium mb-1">
+              {isAdding ? 'PIN Osobisty' : 'Zmień PIN (opcjonalnie)'}
+            </label>
             <input
               type="text"
               value={formData.pin}
               onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
               className="w-full bg-muted/50 border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              placeholder="np. 1234"
+              placeholder={isAdding ? "np. 1234" : "Wpisz nowy PIN aby zmienić"}
             />
+             <p className="text-xs text-muted-foreground mt-1">
+                 {isAdding ? "Wymagane 4 cyfry." : "Pozostaw puste, aby zachować obecny PIN."}
+             </p>
           </div>
 
           <div>
