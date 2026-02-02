@@ -69,9 +69,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithPin = async (pin: string, redirectPath: string = '/') => {
     // 1. Verify PIN via RPC (Secure Lookup)
     // We use an RPC to check the hash without exposing it to the client
+    interface EmployeeRPCResponse {
+      id: number;
+      name: string;
+      role: string;
+      department_name: string;
+    }
+
     const { data: empData, error: empError } = await supabase
       .rpc('verify_employee_pin', { p_pin: pin })
-      .maybeSingle();
+      .maybeSingle<EmployeeRPCResponse>();
 
     let userData: UserType | null = null;
     let authEmail = '';
