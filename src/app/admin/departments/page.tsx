@@ -3,13 +3,11 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/src/lib/supabase';
 import { Plus, Trash2, Edit2, Save, X, Loader2, Building2 } from 'lucide-react';
-import { cn } from '@/src/lib/utils';
 import Modal from '@/src/components/Modal';
 
 type Department = {
   id: number;
   name: string;
-  general_pin: string;
 };
 
 export default function DepartmentsPage() {
@@ -19,7 +17,7 @@ export default function DepartmentsPage() {
   const [isAdding, setIsAdding] = useState(false);
   
   // Form states
-  const [formData, setFormData] = useState({ name: '', general_pin: '' });
+  const [formData, setFormData] = useState({ name: '' });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -43,7 +41,7 @@ export default function DepartmentsPage() {
 
   const handleEdit = (dept: Department) => {
     setIsEditing(dept.id);
-    setFormData({ name: dept.name, general_pin: dept.general_pin });
+    setFormData({ name: dept.name });
     setIsAdding(false);
     setError(null);
   };
@@ -51,7 +49,7 @@ export default function DepartmentsPage() {
   const handleCancel = () => {
     setIsEditing(null);
     setIsAdding(false);
-    setFormData({ name: '', general_pin: '' });
+    setFormData({ name: '' });
     setError(null);
   };
 
@@ -74,27 +72,22 @@ export default function DepartmentsPage() {
     e.preventDefault();
     setError(null);
 
-    if (!formData.name || !formData.general_pin) {
-      setError('Wszystkie pola są wymagane');
+    if (!formData.name) {
+      setError('Nazwa działu jest wymagana');
       return;
-    }
-
-    if (formData.general_pin.length < 4) {
-        setError('PIN musi mieć co najmniej 4 znaki');
-        return;
     }
 
     try {
       if (isAdding) {
         const { error } = await supabase
           .from('departments')
-          .insert([{ name: formData.name, general_pin: formData.general_pin }]);
+          .insert([{ name: formData.name }]);
         
         if (error) throw error;
       } else if (isEditing) {
         const { error } = await supabase
           .from('departments')
-          .update({ name: formData.name, general_pin: formData.general_pin })
+          .update({ name: formData.name })
           .eq('id', isEditing);
         
         if (error) throw error;
@@ -102,8 +95,9 @@ export default function DepartmentsPage() {
 
       handleCancel();
       fetchDepartments();
-    } catch (err: any) {
-      setError(err.message || 'Wystąpił błąd');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Wystąpił błąd';
+      setError(message);
     }
   };
 
@@ -116,7 +110,7 @@ export default function DepartmentsPage() {
         </div>
         
         <button 
-          onClick={() => { setIsAdding(true); setFormData({ name: '', general_pin: '' }); }}
+          onClick={() => { setIsAdding(true); setFormData({ name: '' }); }}
           className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg transition-colors font-medium shadow-sm"
         >
           <Plus size={18} />
@@ -140,7 +134,6 @@ export default function DepartmentsPage() {
                 <tr>
                   <th className="px-6 py-4 w-16">ID</th>
                   <th className="px-6 py-4">Nazwa</th>
-                  <th className="px-6 py-4">PIN Ogólny</th>
                   <th className="px-6 py-4 text-right">Akcje</th>
                 </tr>
               </thead>
@@ -152,7 +145,6 @@ export default function DepartmentsPage() {
                         <Building2 className="w-4 h-4 text-muted-foreground" />
                         {dept.name}
                     </td>
-                    <td className="px-6 py-4 font-mono">{dept.general_pin}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button 
@@ -196,18 +188,6 @@ export default function DepartmentsPage() {
             />
           </div>
           
-          <div>
-            <label className="block text-sm font-medium mb-1">PIN ogólny</label>
-            <input
-              type="text"
-              value={formData.general_pin}
-              onChange={(e) => setFormData({ ...formData, general_pin: e.target.value })}
-              className="w-full bg-muted/50 border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              placeholder="np. 1234"
-            />
-            <p className="text-xs text-muted-foreground mt-1">Używany do autoryzacji operacji dla całego działu.</p>
-          </div>
-
           {error && (
             <div className="text-destructive text-sm bg-destructive/10 p-3 rounded-lg">
               {error}

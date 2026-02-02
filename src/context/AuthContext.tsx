@@ -9,7 +9,7 @@ export type UserType = {
   name: string;
   role: string;
   department?: string;
-  type: 'employee' | 'department';
+  type: 'employee';
 };
 
 type AuthContextType = {
@@ -26,37 +26,118 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // Restore session from localStorage or Supabase session
   useEffect(() => {
-    const stored = localStorage.getItem('kmn_auth');
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch {
+    const initializeAuth = async () => {
+      // 1. Check Supabase Session first
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        // We have a session, but we need the rich user details (name, role from DB)
+        // We can try to recover it from localStorage as a cache, or fetch it.
+        // For simplicity/robustness, we'll assume localStorage is the source of truth for UI state
+        // and Supabase Session is the source of truth for RLS.
+        const stored = localStorage.getItem('kmn_auth');
+        if (stored) {
+          try {
+            setUser(JSON.parse(stored));
+          } catch {
+            // Invalid storage
+          }
+        }
+      } else {
+        // No session, ensure no user state
         localStorage.removeItem('kmn_auth');
+        setUser(null);
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+
+    initializeAuth();
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+       if (!session) {
+         setUser(null);
+         localStorage.removeItem('kmn_auth');
+       }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const loginWithPin = async (pin: string, redirectPath: string = '/') => {
-    // 1. Check Employees
+    // 1. Check Employees Table (to validate PIN and get Metadata)
     const { data: empData, error: empError } = await supabase
       .from('employees')
       .select('*, departments(name)')
       .eq('pin', pin)
       .single();
 
+    let userData: UserType | null = null;
+    let authEmail = '';
+    
     if (empData && !empError) {
-      const userData: UserType = {
+      userData = {
         id: empData.id,
         name: empData.name,
         role: empData.role,
         department: empData.departments?.name,
         type: 'employee',
       };
+      authEmail = `emp_${pin}@kmn.local`;
+    }
+
+    if (!userData || !authEmail) {
+      throw new Error('Nieprawidłowy PIN');
+    }
+
+    // 3. Authenticate with Supabase (Required for RLS)
+    // Strategy: Map PIN to a predictable Email/Password
+    // Password will be `kmn_mobile_${pin}`
+    const authPassword = `kmn_mobile_${pin}`;
+
+    try {
+      // Try to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: authEmail,
+        password: authPassword,
+      });
+
+      if (signInError) {
+        if (signInError.message.includes('Email not confirmed')) {
+            
+        }
+
+        // If sign in fails (likely User not found), try to Sign Up (Auto-provisioning)
+        if (signInError.message.includes('Invalid login') || signInError.message.includes('not found')) {
+            const { error: signUpError } = await supabase.auth.signUp({
+                email: authEmail,
+                password: authPassword,
+                options: {
+                    data: {
+                        name: userData.name,
+                        role: userData.role
+                    }
+                }
+            });
+            
+            if (signUpError) {
+                console.error("Auto-provisioning failed:", signUpError);
+                throw new Error('Błąd autoryzacji systemowej (Sign Up)');
+            }
+            // Auto sign-in usually happens after sign up unless confirmation is required.
+            // Assuming "Disable email confirmation" is ON in Supabase for this convenience.
+        } else {
+            throw signInError;
+        }
+      }
+
+      // 4. Success - Update State
       setUser(userData);
       localStorage.setItem('kmn_auth', JSON.stringify(userData));
       
+      // 5. Log the login
       await supabase.from('user_logs').insert({
         user_name: userData.name,
         user_type: userData.type,
@@ -65,40 +146,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       router.push(redirectPath);
       return userData;
+
+    } catch (err) {
+      console.error("Auth Error:", err);
+      const message = err instanceof Error ? err.message : 'Nieznany błąd';
+      throw new Error('Błąd autoryzacji: ' + message);
     }
-
-    // 2. Check Departments
-    const { data: deptData, error: deptError } = await supabase
-      .from('departments')
-      .select('*')
-      .eq('general_pin', pin)
-      .single();
-
-    if (deptData && !deptError) {
-      const userData: UserType = {
-        id: deptData.id,
-        name: deptData.name,
-        role: 'department_admin',
-        department: deptData.name,
-        type: 'department',
-      };
-      setUser(userData);
-      localStorage.setItem('kmn_auth', JSON.stringify(userData));
-      
-      await supabase.from('user_logs').insert({
-        user_name: userData.name,
-        user_type: userData.type,
-        department_name: userData.department
-      });
-
-      router.push(redirectPath);
-      return userData;
-    }
-
-    throw new Error('Nieprawidłowy PIN');
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     localStorage.removeItem('kmn_auth');
     setUser(null);
     router.push('/login');
