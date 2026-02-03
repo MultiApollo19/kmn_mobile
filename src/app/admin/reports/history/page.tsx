@@ -138,7 +138,31 @@ export default function HistoryReportPage() {
 
       if (error) throw error;
       
-      const sortedData = (data as unknown as VisitSummary[]).sort((a, b) => {
+      const rawData = data as unknown as VisitSummary[];
+      
+      // Deduplicate by visit_id, keeping the latest state
+      const uniqueVisitsMap = new Map<number, VisitSummary>();
+      rawData.forEach(record => {
+        const existing = uniqueVisitsMap.get(record.visit_id);
+        if (!existing) {
+          uniqueVisitsMap.set(record.visit_id, record);
+        } else {
+          // Priority 1: Has exit_time (completed)
+          if (record.exit_time && !existing.exit_time) {
+            uniqueVisitsMap.set(record.visit_id, record);
+          } 
+          // Priority 2: Latest recorded_at (if both completed or both active)
+          else if ((!!record.exit_time === !!existing.exit_time) && record.recorded_at && existing.recorded_at) {
+             if (new Date(record.recorded_at).getTime() > new Date(existing.recorded_at).getTime()) {
+               uniqueVisitsMap.set(record.visit_id, record);
+             }
+          }
+        }
+      });
+      
+      const uniqueVisits = Array.from(uniqueVisitsMap.values());
+
+      const sortedData = uniqueVisits.sort((a, b) => {
         if (a.exit_time === null && b.exit_time !== null) return -1;
         if (a.exit_time !== null && b.exit_time === null) return 1;
         return new Date(b.entry_time).getTime() - new Date(a.entry_time).getTime();
