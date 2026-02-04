@@ -144,19 +144,35 @@ export default function HistoryReportPage() {
       const uniqueVisitsMap = new Map<number, VisitSummary>();
       rawData.forEach(record => {
         const existing = uniqueVisitsMap.get(record.visit_id);
+        
         if (!existing) {
           uniqueVisitsMap.set(record.visit_id, record);
-        } else {
-          // Priority 1: Has exit_time (completed)
-          if (record.exit_time && !existing.exit_time) {
-            uniqueVisitsMap.set(record.visit_id, record);
-          } 
-          // Priority 2: Latest recorded_at (if both completed or both active)
-          else if ((!!record.exit_time === !!existing.exit_time) && record.recorded_at && existing.recorded_at) {
-             if (new Date(record.recorded_at).getTime() > new Date(existing.recorded_at).getTime()) {
-               uniqueVisitsMap.set(record.visit_id, record);
+          return;
+        }
+
+        // Decision Logic: Which record is "newer" or "better"?
+        let replace = false;
+
+        // 1. Prefer record with exit_time (Completed) over active
+        if (record.exit_time && !existing.exit_time) {
+          replace = true;
+        }
+        // 2. If both have exit_time (or both don't), compare timestamps
+        else if ((!!record.exit_time === !!existing.exit_time)) {
+             // Try recorded_at first
+             if (record.recorded_at && existing.recorded_at) {
+                if (new Date(record.recorded_at).getTime() > new Date(existing.recorded_at).getTime()) {
+                   replace = true;
+                }
+             } 
+             // Fallback to ID (assuming higher ID = newer)
+             else if (record.id > existing.id) {
+                replace = true;
              }
-          }
+        }
+
+        if (replace) {
+          uniqueVisitsMap.set(record.visit_id, record);
         }
       });
       
