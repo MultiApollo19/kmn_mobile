@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '@/src/hooks/useAuth';
 import { Loader2, Delete, ChevronRight } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+import Image from 'next/image';
 
 interface PinLoginFormProps {
   title?: string;
@@ -53,7 +54,16 @@ export default function PinLoginForm({
 
     return (
         <div className="w-full max-w-sm mx-auto p-8 flex flex-col items-center justify-center min-h-[500px]">
-            <div className="mb-8 text-center space-y-2">
+            <div className="mb-2 text-center space-y-2 flex flex-col items-center">
+                <div className="relative w-82 h-42 mb-1">
+                    <Image 
+                        src="/Logo.png" 
+                        alt="Logo" 
+                        fill
+                        className="object-contain"
+                        priority
+                    />
+                </div>
                 <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
                 <p className="text-muted-foreground text-sm">{description}</p>
             </div>

@@ -472,9 +472,6 @@ export default function HistoryReportPage() {
                     </div>
                     <div>
                         <h2 className="text-lg font-bold text-slate-900">Szczegóły Wizyty</h2>
-                        <div className="flex items-center gap-3 text-xs text-slate-500 font-mono mt-0.5">
-                           <span>VISIT #{selectedVisit.id}</span>
-                        </div>
                     </div>
                  </div>
                  <button 
