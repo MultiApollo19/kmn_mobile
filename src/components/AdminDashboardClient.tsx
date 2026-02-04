@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/src/lib/supabase';
 import { Loader2, Building2, Clock, FileText, Hash } from 'lucide-react';
 import { format } from 'date-fns';
@@ -79,8 +79,8 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
       
       const todayStatsQuery = supabase
-        .from('visit_history')
-        .select('visit_id, entry_time, exit_time')
+        .from('visits')
+        .select('id, entry_time, exit_time')
         .gte('entry_time', startOfDay);
 
       const totalStatsQuery = supabase
@@ -110,16 +110,7 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
       const activeVisits = activeRes.data;
       
       // Deduplicate history for Today's Stats
-      const historyData = todayStatsRes.data || [];
-      const uniqueTodayVisitsMap = new Map();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      historyData.forEach((v: any) => {
-          const existing = uniqueTodayVisitsMap.get(v.visit_id);
-          if (!existing || (!existing.exit_time && v.exit_time)) {
-              uniqueTodayVisitsMap.set(v.visit_id, v);
-          }
-      });
-      const todayVisits = Array.from(uniqueTodayVisitsMap.values());
+      const todayVisits = todayStatsRes.data || [];
       
       const totalVisits = totalStatsRes.data;
 

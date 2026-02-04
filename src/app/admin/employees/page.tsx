@@ -14,7 +14,7 @@ type Department = {
 type Employee = {
   id: number;
   name: string;
-  pin_hash?: string; // Changed from pin: string
+  pin_hash?: string;
   department_id: number | null;
   role: 'user' | 'admin' | 'department_admin';
   departments: Department | null;
@@ -126,21 +126,31 @@ export default function EmployeesPage() {
     }
 
     try {
-      // Use RPC for safe upsert with hashing
-      const { error } = await supabase.rpc('upsert_employee', {
-        p_name: formData.name,
-        p_pin: formData.pin, // Can be empty if editing
-        p_role: formData.role,
-        p_department_id: formData.department_id ? parseInt(formData.department_id) : null,
-        p_id: isEditing || null
+      // Use API Route for safe upsert and Auth Sync
+      const response = await fetch('/api/employees/manage', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            id: isEditing || null,
+            name: formData.name,
+            pin: formData.pin || null,
+            role: formData.role,
+            department_id: formData.department_id ? parseInt(formData.department_id) : null,
+        }),
       });
 
-      if (error) throw error;
+      const data = await response.json();
+
+      if (!response.ok) {
+          throw new Error(data.error || 'Wystąpił błąd podczas zapisu');
+      }
 
       handleCancel();
       fetchData();
-    } catch (err: any) {
-      setError(err.message || 'Wystąpił błąd');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Wystąpił błąd');
     }
   };
 

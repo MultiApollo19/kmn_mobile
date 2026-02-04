@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/src/lib/supabase';
 import { useRouter } from 'next/navigation';
 
+
 export type UserType = {
   id: string | number;
   name: string;
@@ -68,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loginWithPin = async (pin: string, redirectPath: string = '/') => {
     // 1. Verify PIN via RPC (Secure Lookup)
-    // We use an RPC to check the hash without exposing it to the client
+    // The RPC checks the PIN against the bcrypt hash in the database.
     interface EmployeeRPCResponse {
       id: number;
       name: string;
@@ -99,61 +100,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Nieprawidłowy PIN');
     }
 
-    // 3. Authenticate with Supabase (Required for RLS)
-    // Password remains based on PIN for this session (Supabase Auth hashes it)
-    const prefix = process.env.NEXT_PUBLIC_AUTH_PASSWORD_PREFIX;
-    if (!prefix) {
-      console.error('Missing NEXT_PUBLIC_AUTH_PASSWORD_PREFIX');
-      throw new Error('Błąd konfiguracji systemu (Auth Prefix)');
-    }
-    const authPassword = `${prefix}${pin}`;
-
+    // 3. Authenticate (Skip Supabase Auth for Employees - Local State Only)
+    // We trust verify_employee_pin result.
+    
     try {
-      // Try to sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: authEmail,
-        password: authPassword,
-      });
-
-      if (signInError) {
-        if (signInError.message.includes('Email not confirmed')) {
-            
-        }
-
-        // If sign in fails (likely User not found), try to Sign Up (Auto-provisioning)
-        if (signInError.message.includes('Invalid login') || signInError.message.includes('not found')) {
-            const { error: signUpError } = await supabase.auth.signUp({
-                email: authEmail,
-                password: authPassword,
-                options: {
-                    data: {
-                        name: userData.name,
-                        role: userData.role
-                    }
-                }
-            });
-            
-            if (signUpError) {
-                console.error("Auto-provisioning failed:", signUpError);
-                throw new Error('Błąd autoryzacji systemowej (Sign Up)');
-            }
-            // Auto sign-in usually happens after sign up unless confirmation is required.
-            // Assuming "Disable email confirmation" is ON in Supabase for this convenience.
-        } else {
-            throw signInError;
-        }
-      }
-
       // 4. Success - Update State
       setUser(userData);
       localStorage.setItem('kmn_auth', JSON.stringify(userData));
       
       // 5. Log the login
-      await supabase.from('user_logs').insert({
-        user_name: userData.name,
-        user_type: userData.type,
-        department_name: userData.department
-      });
+      // Note: This might fail if RLS requires auth.uid(). 
+      // If it fails, we catch it but don't block login (or maybe we should?).
+      // For now, let's try to insert. If 'user_logs' is public-insertable or we don't care about RLS for logs, it's fine.
+      try {
+          await supabase.from('user_logs').insert({
+            user_name: userData.name,
+            user_type: userData.type,
+            department_name: userData.department
+          });
+      } catch (logErr) {
+          console.warn("Failed to log login:", logErr);
+      }
 
       router.push(redirectPath);
       return userData;

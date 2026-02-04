@@ -78,8 +78,8 @@ export const getAdminDashboardData = async () => {
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
     
     const todayStatsQuery = supabase
-      .from('visit_history')
-      .select('visit_id, entry_time, exit_time')
+      .from('visits')
+      .select('id, entry_time, exit_time')
       .gte('entry_time', startOfDay);
 
     const totalStatsQuery = supabase
@@ -94,19 +94,7 @@ export const getAdminDashboardData = async () => {
     ]);
 
     // Deduplicate history for Today's Stats
-    const historyData = todayStatsRes.data || [];
-    const uniqueTodayVisitsMap = new Map();
-    historyData.forEach((v: any) => {
-        // We want the latest state (usually has exit_time if finished)
-        // Since we didn't order by recorded_at, we might get mixed order.
-        // But entry_time is constant for a visit_id.
-        // We prioritize the one with exit_time.
-        const existing = uniqueTodayVisitsMap.get(v.visit_id);
-        if (!existing || (!existing.exit_time && v.exit_time)) {
-            uniqueTodayVisitsMap.set(v.visit_id, v);
-        }
-    });
-    const uniqueTodayVisits = Array.from(uniqueTodayVisitsMap.values());
+    const uniqueTodayVisits = todayStatsRes.data || [];
 
     // Calculate Stats
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

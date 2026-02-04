@@ -15,19 +15,14 @@ import {
   Clock,
   User,
   Building2,
-  MapPin,
   CalendarRange,
-  Hash,
-  Info,
-  LogOut,
-  AlertTriangle
+  X
 } from 'lucide-react';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import Image from 'next/image';
 
 type VisitSummary = {
-  id: number; // history_id
-  visit_id: number;
+  id: number;
   entry_time: string;
   exit_time: string | null;
   visitor_name: string;
@@ -48,13 +43,6 @@ type VisitSummary = {
   badges: {
     badge_number: string;
   } | null;
-  recorded_at?: string;
-  operation_type?: string;
-};
-
-// Extends VisitSummary with signature for the details view
-type VisitDetails = VisitSummary & {
-  signature: string | null;
 };
 
 export default function HistoryReportPage() {
@@ -80,24 +68,23 @@ export default function HistoryReportPage() {
   const fetchHistory = useCallback(async () => {
     setLoading(true);
     try {
-      // Querying the NEW visit_history table
+      // Querying the visits table
       let query = supabase
-        .from('visit_history')
+        .from('visits')
         .select(`
-          id:history_id,
-          visit_id,
+          id,
           entry_time,
           exit_time,
           visitor_name,
           notes,
-          employees:employees!visit_history_employee_id_fkey (
+          employees:employees!visits_employee_id_fkey (
             name,
             departments (
               name
             )
           ),
           is_system_exit,
-          exit_employees:employees!visit_history_exit_employee_id_fkey (
+          exit_employees:employees!visits_exit_employee_id_fkey (
             name
           ),
           visit_purposes (
@@ -105,9 +92,7 @@ export default function HistoryReportPage() {
           ),
           badges (
             badge_number
-          ),
-          recorded_at,
-          operation_type
+          )
         `);
 
       // Date Filtering
@@ -138,45 +123,7 @@ export default function HistoryReportPage() {
 
       if (error) throw error;
       
-      const rawData = data as unknown as VisitSummary[];
-      
-      // Deduplicate by visit_id, keeping the latest state
-      const uniqueVisitsMap = new Map<number, VisitSummary>();
-      rawData.forEach(record => {
-        const existing = uniqueVisitsMap.get(record.visit_id);
-        
-        if (!existing) {
-          uniqueVisitsMap.set(record.visit_id, record);
-          return;
-        }
-
-        // Decision Logic: Which record is "newer" or "better"?
-        let replace = false;
-
-        // 1. Prefer record with exit_time (Completed) over active
-        if (record.exit_time && !existing.exit_time) {
-          replace = true;
-        }
-        // 2. If both have exit_time (or both don't), compare timestamps
-        else if ((!!record.exit_time === !!existing.exit_time)) {
-             // Try recorded_at first
-             if (record.recorded_at && existing.recorded_at) {
-                if (new Date(record.recorded_at).getTime() > new Date(existing.recorded_at).getTime()) {
-                   replace = true;
-                }
-             } 
-             // Fallback to ID (assuming higher ID = newer)
-             else if (record.id > existing.id) {
-                replace = true;
-             }
-        }
-
-        if (replace) {
-          uniqueVisitsMap.set(record.visit_id, record);
-        }
-      });
-      
-      const uniqueVisits = Array.from(uniqueVisitsMap.values());
+      const uniqueVisits = data as unknown as VisitSummary[];
 
       const sortedData = uniqueVisits.sort((a, b) => {
         if (a.exit_time === null && b.exit_time !== null) return -1;
@@ -196,17 +143,16 @@ export default function HistoryReportPage() {
     fetchHistory();
   }, [fetchHistory]);
 
-  // Fetch signature from history table
+  // Fetch signature from visits table
   useEffect(() => {
     if (selectedVisit) {
       const fetchSignature = async () => {
         setLoadingSignature(true);
         try {
-          // Use history_id (which is mapped to id in the fetch)
           const { data, error } = await supabase
-            .from('visit_history')
+            .from('visits')
             .select('signature')
-            .eq('history_id', selectedVisit.id) 
+            .eq('id', selectedVisit.id) 
             .single();
             
           if (error) throw error;
@@ -245,18 +191,18 @@ export default function HistoryReportPage() {
     setIsExporting(true);
 
     try {
-      const ids = filteredVisits.map(v => v.id); // these are history_ids
+      const ids = filteredVisits.map(v => v.id); // these are visit ids now
       
       const { data: signaturesData, error } = await supabase
-        .from('visit_history')
-        .select('history_id, signature')
-        .in('history_id', ids);
+        .from('visits')
+        .select('id, signature')
+        .in('id', ids);
 
       if (error) throw error;
 
       const visitsWithSignatures = filteredVisits.map(v => ({
         ...v,
-        signature: signaturesData?.find(s => s.history_id === v.id)?.signature || null
+        signature: signaturesData?.find(s => s.id === v.id)?.signature || null
       }));
 
       const doc = new jsPDF({ orientation: 'landscape' });
@@ -527,11 +473,7 @@ export default function HistoryReportPage() {
                     <div>
                         <h2 className="text-lg font-bold text-slate-900">Szczegóły Wizyty</h2>
                         <div className="flex items-center gap-3 text-xs text-slate-500 font-mono mt-0.5">
-                           <span>LOG #{selectedVisit.id}</span>
-                           <span className="text-slate-300">|</span>
-                           <span>VISIT #{selectedVisit.visit_id}</span>
-                           <span className="text-slate-300">|</span>
-                           <span>{selectedVisit.recorded_at ? format(new Date(selectedVisit.recorded_at), 'yyyy-MM-dd HH:mm') : '-'}</span>
+                           <span>VISIT #{selectedVisit.id}</span>
                         </div>
                     </div>
                  </div>
@@ -681,10 +623,7 @@ export default function HistoryReportPage() {
               </div>
 
               {/* Footer Actions */}
-              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
-                 <div className="text-xs text-slate-400 flex items-center gap-2">
-                    <span className="bg-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-mono">{selectedVisit.operation_type || 'N/A'}</span>
-                 </div>
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end items-center">
                  <button 
                    onClick={() => setSelectedVisit(null)}
                    className="px-8 py-2 bg-slate-900 text-white font-medium rounded-lg hover:bg-slate-800 transition-colors shadow-sm text-sm"

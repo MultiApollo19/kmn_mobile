@@ -10,17 +10,13 @@ import {
   Download, 
   ChevronLeft, 
   ChevronRight,
-  FileText,
   AlertTriangle,
-  Clock,
-  CalendarRange,
-  X
+  CalendarRange
 } from 'lucide-react';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 
 type VisitSummary = {
-  id: number; // history_id
-  visit_id: number;
+  id: number;
   entry_time: string;
   exit_time: string | null;
   visitor_name: string;
@@ -56,15 +52,14 @@ export default function SystemExitsPage() {
     setLoading(true);
     try {
       let query = supabase
-        .from('visit_history')
+        .from('visits')
         .select(`
-          id:history_id,
-          visit_id,
+          id,
           entry_time,
           exit_time,
           visitor_name,
           notes,
-          employees:employees!visit_history_employee_id_fkey (
+          employees:employees!visits_employee_id_fkey (
             name,
             departments (
               name
