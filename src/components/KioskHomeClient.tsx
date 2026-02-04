@@ -154,10 +154,10 @@ const SignaturePad = ({ onEnd, disabled }: { onEnd: (dataUrl: string) => void, d
         <button 
           type="button" 
           onClick={clear}
-          className="absolute top-3 right-3 z-20 p-2 bg-red text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg shadow-sm border border-slate-200 transition-all opacity-0 group-hover:opacity-100"
+          className="absolute top-3 right-3 z-20 p-2 bg-white text-red-500 hover:text-red-500 hover:bg-red-50 rounded-lg shadow-sm border border-slate-200 transition-all"
           title="Wyczyść podpis"
         >
-          <XCircle className="w-5 h-5 bg-amber-400" />
+          <XCircle className="w-5 h-5" />
         </button>
       )}
     </div>

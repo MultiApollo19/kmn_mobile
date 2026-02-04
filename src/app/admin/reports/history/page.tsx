@@ -16,7 +16,7 @@ import {
   User,
   Building2,
   CalendarRange,
-  X
+  LogOut
 } from 'lucide-react';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import Image from 'next/image';
