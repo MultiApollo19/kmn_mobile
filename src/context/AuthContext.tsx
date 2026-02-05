@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '@/src/lib/supabase';
 import { useRouter } from 'next/navigation';
 
@@ -26,6 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserType | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const logoutTimer = useRef<number | null>(null);
 
   // Restore session from localStorage or Supabase session
   useEffect(() => {
@@ -41,7 +42,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const stored = localStorage.getItem('kmn_auth');
         if (stored) {
           try {
-            setUser(JSON.parse(stored));
+            const parsed = JSON.parse(stored) as { user: UserType; expiresAt?: number } | UserType;
+            // New format: { user, expiresAt }
+            if (parsed && typeof parsed === 'object' && 'user' in parsed && (parsed as any).user) {
+              const p = parsed as { user: UserType; expiresAt?: number };
+              if (p.expiresAt && typeof p.expiresAt === 'number') {
+                if (Date.now() > p.expiresAt) {
+                  localStorage.removeItem('kmn_auth');
+                  setUser(null);
+                } else {
+                  setUser(p.user);
+                  const ms = p.expiresAt - Date.now();
+                  if (ms > 0) {
+                    if (logoutTimer.current) window.clearTimeout(logoutTimer.current);
+                    logoutTimer.current = window.setTimeout(() => {
+                      (async () => {
+                        await supabase.auth.signOut().catch(() => {});
+                        localStorage.removeItem('kmn_auth');
+                        setUser(null);
+                        try { router.push('/login'); } catch {}
+                      })();
+                    }, ms);
+                  }
+                }
+              } else {
+                setUser(p.user);
+              }
+            } else {
+              // Backwards compatibility: stored is plain UserType
+              setUser(parsed as UserType);
+            }
           } catch {
             // Invalid storage
           }
@@ -106,7 +136,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // 4. Success - Update State
       setUser(userData);
-      localStorage.setItem('kmn_auth', JSON.stringify(userData));
+      // Determine session duration: admin -> 1 hour, kiosk/others -> 1 minute
+      const isAdminPath = redirectPath.includes('/admin');
+      const sessionMs = isAdminPath ? 60 * 60 * 1000 : 60 * 1000;
+      const expiresAt = Date.now() + sessionMs;
+      localStorage.setItem('kmn_auth', JSON.stringify({ user: userData, expiresAt }));
+      if (logoutTimer.current) window.clearTimeout(logoutTimer.current);
+      logoutTimer.current = window.setTimeout(() => {
+        (async () => {
+          await supabase.auth.signOut().catch(() => {});
+          localStorage.removeItem('kmn_auth');
+          setUser(null);
+          try { router.push('/login'); } catch {}
+        })();
+      }, sessionMs);
       
       // 5. Log the login
       // Note: This might fail if RLS requires auth.uid(). 
@@ -136,6 +179,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     localStorage.removeItem('kmn_auth');
     setUser(null);
+    if (logoutTimer.current) {
+      window.clearTimeout(logoutTimer.current);
+      logoutTimer.current = null;
+    }
     router.push('/login');
   };
 
