@@ -19,7 +19,8 @@
 
 # production
 /build
-
+# production
+/.github
 # misc
 .DS_Store
 *.pem
