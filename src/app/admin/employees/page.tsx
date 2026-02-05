@@ -70,7 +70,29 @@ export default function EmployeesPage() {
     if (empRes.error) console.error('Error fetching employees:', empRes.error);
     if (deptRes.error) console.error('Error fetching departments:', deptRes.error);
 
-    setEmployees(empRes.data || []);
+    // Normalize departments field: Supabase may return an array for the joined relation
+    type RawEmployee = {
+      id: number;
+      name: string;
+      password: string | null;
+      department_id: number | null;
+      role: 'user' | 'admin' | 'department_admin';
+      departments?: { id: number; name: string }[] | { id: number; name: string } | null;
+    };
+
+    const normalizedEmployees = (empRes.data || []).map((e: unknown) => {
+      const rec = e as RawEmployee;
+      return {
+        id: rec.id,
+        name: rec.name,
+        password: rec.password,
+        department_id: rec.department_id,
+        role: rec.role,
+        departments: Array.isArray(rec.departments) ? (rec.departments[0] || null) : (rec.departments || null),
+      };
+    });
+
+    setEmployees(normalizedEmployees as Employee[]);
     setDepartments(deptRes.data || []);
     setLoading(false);
   };

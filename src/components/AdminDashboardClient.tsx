@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/src/lib/supabase';
-import { Loader2, Building2, Clock, FileText, Hash } from 'lucide-react';
+import { Loader2, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { cn } from '@/src/lib/utils';
@@ -196,11 +196,11 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
             <table className="w-full text-sm text-left">
               <thead className="bg-muted/30 text-muted-foreground font-semibold border-b border-border">
                 <tr>
-                  <th className="px-4 py-4 min-w-[140px]">Czas wejścia</th>
-                  <th className="px-4 py-4 min-w-[200px]">Interesant</th>
-                  <th className="px-4 py-4 min-w-[200px]">Osoba przyjmująca</th>
-                  <th className="px-4 py-4 min-w-[150px]">Cel wizyty</th>
-                  <th className="px-4 py-4 min-w-[120px]">Identyfikator</th>
+                  <th className="px-4 py-4 min-w-35">Czas wejścia</th>
+                  <th className="px-4 py-4 min-w-50">Interesant</th>
+                  <th className="px-4 py-4 min-w-50">Osoba przyjmująca</th>
+                  <th className="px-4 py-4 min-w-37.5">Cel wizyty</th>
+                  <th className="px-4 py-4 min-w-30">Identyfikator</th>
                   <th className="px-4 py-4">Uwagi</th>
                 </tr>
               </thead>

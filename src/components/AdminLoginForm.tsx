@@ -17,7 +17,7 @@ export default function AdminLoginForm({
     description = 'Zaloguj się, aby zarządzać systemem', 
     redirectPath = '/admin' 
 }: AdminLoginFormProps) {
-    const { loginWithPin } = useAuth() as any;
+    const { loginWithPin } = useAuth();
     const [pin, setPin] = useState('');
     const inputRef = useRef<HTMLInputElement | null>(null);
     const [loading, setLoading] = useState(false);
@@ -31,7 +31,7 @@ export default function AdminLoginForm({
         setLoading(true);
         try {
             await loginWithPin(trimmed, redirectPath);
-        } catch (err) {
+        } catch {
             setError('Błędny PIN');
             setPin('');
             inputRef.current?.focus();

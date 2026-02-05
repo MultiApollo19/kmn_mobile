@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
             const parsed = JSON.parse(stored) as { user: UserType; expiresAt?: number } | UserType;
             // New format: { user, expiresAt }
-            if (parsed && typeof parsed === 'object' && 'user' in parsed && (parsed as any).user) {
+            if (parsed && typeof parsed === 'object' && 'user' in parsed) {
               const p = parsed as { user: UserType; expiresAt?: number };
               if (p.expiresAt && typeof p.expiresAt === 'number') {
                 if (Date.now() > p.expiresAt) {
@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [router]);
 
   const loginWithPin = async (pin: string, redirectPath: string = '/') => {
     // 1. Verify PIN via RPC (Secure Lookup)

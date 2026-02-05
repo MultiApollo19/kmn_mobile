@@ -288,7 +288,7 @@ export default function HistoryReportPage() {
                try {
                  const dim = data.cell;
                  doc.addImage(visit.signature, 'PNG', dim.x + 0.5, dim.y + 0.5, dim.width - 1, dim.height - 1);
-               } catch (err) { /* ignore */ }
+               } catch { /* ignore */ }
             }
           }
         }
@@ -371,7 +371,7 @@ export default function HistoryReportPage() {
         </div>
       </div>
 
-      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden min-h-[500px] flex flex-col">
+      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden min-h-125 flex flex-col">
         {loading ? (
           <div className="flex-1 flex items-center justify-center">
             <Loader2 className="w-8 h-8 text-primary animate-spin" />

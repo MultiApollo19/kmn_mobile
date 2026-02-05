@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useAuth } from '@/src/hooks/useAuth';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Users, FileText, Settings, Bell, Search, LogOut, Loader2, Building2 } from 'lucide-react';
@@ -11,30 +11,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [isAuthorized, setIsAuthorized] = useState(false);
-
-  // Check Authorization
+  // Derive authorization from current state instead of setting it inside an effect
   useEffect(() => {
     if (loading) return;
-
-    if (pathname === '/admin/login') {
-      setIsAuthorized(true);
-      return;
-    }
-
+    if (pathname === '/admin/login') return;
     if (!user) {
       router.replace('/admin/login');
       return;
     }
-
     if (user.role !== 'admin' && user.role !== 'department_admin') {
-      // Not an admin
-      router.replace('/'); 
+      router.replace('/');
       return;
     }
-
-    setIsAuthorized(true);
   }, [user, loading, pathname, router]);
+
+  const isAuthorized = !loading && (pathname === '/admin/login' || (!!user && (user.role === 'admin' || user.role === 'department_admin')));
 
   // If on login page, render children without layout
   if (pathname === '/admin/login') {
