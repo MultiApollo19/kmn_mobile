@@ -54,7 +54,25 @@ export default function DepartmentsPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Czy na pewno chcesz usunąć ten dział? Może to wpłynąć na przypisanych pracowników.')) return;
+    // Check for assigned employees first
+    const { data: employees, error: checkError } = await supabase
+      .from('employees')
+      .select('name')
+      .eq('department_id', id);
+
+    if (checkError) {
+      alert('Błąd podczas sprawdzania powiązań: ' + checkError.message);
+      return;
+    }
+
+    if (employees && employees.length > 0) {
+      const names = employees.map(e => e.name).slice(0, 5).join(', ');
+      const more = employees.length > 5 ? ` i ${employees.length - 5} innych` : '';
+      alert(`Nie można usunąć działu. Przypisani pracownicy: ${names}${more}. Musisz ich najpierw przenieść lub usunąć.`);
+      return;
+    }
+
+    if (!confirm('Czy na pewno chcesz usunąć ten dział?')) return;
 
     const { error } = await supabase
       .from('departments')
@@ -62,7 +80,7 @@ export default function DepartmentsPage() {
       .eq('id', id);
 
     if (error) {
-      alert('Błąd podczas usuwania: ' + error.message);
+      alert(`Błąd podczas usuwania (Code: ${error.code}): ${error.message} \n\nDetails: ${error.details}`);
     } else {
       fetchDepartments();
     }

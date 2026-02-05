@@ -318,7 +318,7 @@ export default function HistoryReportPage() {
       doc.setFont('Roboto', 'bold');
       doc.text('Podsumowanie:', 14, finalY);
       doc.setFont('Roboto', 'normal');
-      doc.text(`Liczba wizyt w okresie: ${totalVisits}`, 14, finalY + 5);
+      doc.text(`Liczba wizyt w zakresie: ${totalVisits}`, 14, finalY + 5);
       doc.text(`Średni czas trwania wizyty: ${avgDurationText}`, 14, finalY + 10);
 
       doc.save(`historia_wizyt_${format(new Date(), 'yyyy-MM-dd')}.pdf`);

@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
     // 2. Handle PIN (Update DB Hash only)
     if (pin) {
-      const { error: pinError } = await supabase.rpc('update_employee_pin_hash', {
+      const { error: pinError } = await supabase.rpc('update_employee_password', {
         p_employee_id: targetId,
         p_pin: pin
       });

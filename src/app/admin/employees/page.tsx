@@ -14,7 +14,7 @@ type Department = {
 type Employee = {
   id: number;
   name: string;
-  pin_hash?: string;
+  password: string | null;
   department_id: number | null;
   role: 'user' | 'admin' | 'department_admin';
   departments: Department | null;
@@ -47,7 +47,11 @@ export default function EmployeesPage() {
     const employeesQuery = supabase
       .from('employees')
       .select(`
-        *,
+        id,
+        name,
+        role,
+        department_id,
+        password,
         departments (
           id,
           name
@@ -223,7 +227,7 @@ export default function EmployeesPage() {
                         </span>
                     </td>
                     <td className="px-6 py-4 font-mono text-muted-foreground">
-                        {emp.pin_hash ? '••••' : <span className="text-destructive text-xs">Brak PIN</span>}
+                        {emp.password ? '••••' : <span className="text-destructive text-xs">Brak PIN</span>}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">

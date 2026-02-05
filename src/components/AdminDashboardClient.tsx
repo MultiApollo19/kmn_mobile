@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/src/lib/supabase';
 import { Loader2, Building2, Clock, FileText, Hash } from 'lucide-react';
 import { format } from 'date-fns';
@@ -47,7 +47,7 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
   const [loading, setLoading] = useState(false); // Initially false because we have data
 
   // Refresh function (still needed for manual refresh)
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
       // 1. Fetch Active Visits (Detailed)
@@ -150,7 +150,11 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 p-6">
@@ -222,7 +226,6 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
                       <div className="flex flex-col gap-0.5">
                         <span className="font-medium text-foreground">{visit.employees?.name}</span>
                         <span className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
-                          <Building2 className="w-3.5 h-3.5 opacity-70" />
                           {visit.employees?.departments?.name || '-'}
                         </span>
                       </div>
@@ -234,7 +237,6 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2 bg-secondary/50 px-3 py-1.5 rounded-lg border border-border w-fit shadow-sm">
-                        <Hash className="w-4 h-4 text-muted-foreground" />
                         <span className="font-mono text-foreground tracking-wide text-xs whitespace-nowrap">
                           {visit.badges?.badge_number}
                         </span>
@@ -243,7 +245,6 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
                     <td className="px-4 py-4 text-muted-foreground group-hover:text-foreground transition-colors" title={visit.notes}>
                       {visit.notes ? (
                         <div className="flex items-start gap-2">
-                           <FileText className="w-4 h-4 opacity-50 mt-0.5" />
                            <span className="whitespace-pre-wrap">{visit.notes}</span>
                         </div>
                       ) : (
