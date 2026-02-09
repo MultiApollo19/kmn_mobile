@@ -285,6 +285,7 @@ export default function KioskHomeClient({
   const availableBadges = badges.filter(b => 
     !usedBadgeNumbers.includes(b.badge_number)
   );
+  const showSkeleton = loadingVisits && purposes.length === 0 && badges.length === 0;
 
   const revalidateCache = async () => {
     try {
@@ -483,7 +484,32 @@ export default function KioskHomeClient({
       </nav>
 
       <main className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {showSkeleton ? (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-pulse">
+            <div className="lg:col-span-5 xl:col-span-4 space-y-6">
+              <div className="bg-white rounded-3xl border border-slate-100 p-6 space-y-4">
+                <div className="h-5 w-40 bg-slate-200 rounded" />
+                <div className="h-4 w-56 bg-slate-200 rounded" />
+                <div className="h-12 w-full bg-slate-200 rounded-xl" />
+                <div className="h-12 w-full bg-slate-200 rounded-xl" />
+                <div className="h-12 w-full bg-slate-200 rounded-xl" />
+              </div>
+              <div className="bg-white rounded-3xl border border-slate-100 p-6 space-y-4">
+                <div className="h-5 w-32 bg-slate-200 rounded" />
+                <div className="h-32 w-full bg-slate-200 rounded-xl" />
+              </div>
+            </div>
+            <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+              <div className="bg-white rounded-3xl border border-slate-100 p-6 space-y-4">
+                <div className="h-5 w-48 bg-slate-200 rounded" />
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-10 w-full bg-slate-200 rounded" />
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* --- LEFT COLUMN: Admission Form --- */}
           <div className="lg:col-span-5 xl:col-span-4 space-y-6">
@@ -740,7 +766,8 @@ export default function KioskHomeClient({
             </div>
           </div>
 
-        </div>
+          </div>
+        )}
       </main>
 
       {/* Edit Modal */}

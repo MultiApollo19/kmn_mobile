@@ -43,3 +43,5 @@ next-env.d.ts
 
 GEMINI.md
 supabase_production_update.sql
+.github/*
+/.github

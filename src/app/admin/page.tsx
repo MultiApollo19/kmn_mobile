@@ -1,16 +1,16 @@
-import AdminDashboardClient, { Visit } from '@/src/components/AdminDashboardClient';
-import { getAdminDashboardData } from '@/src/lib/data';
+import AdminDashboardClient from '@/src/components/AdminDashboardClient';
 
-export const dynamic = 'force-dynamic';
-
-export default async function AdminPage() {
-  const data = await getAdminDashboardData();
-
+export default function AdminPage() {
   return (
-    <AdminDashboardClient 
+    <AdminDashboardClient
       initialData={{
-        visits: data.visits as unknown as Visit[],
-        stats: data.stats
+        visits: [],
+        stats: {
+          active: 0,
+          todayVisits: 0,
+          todayAvgTime: '-',
+          totalAvgTime: '-'
+        }
       }}
     />
   );

@@ -44,7 +44,8 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
   // Initialize with server data
   const [visits, setVisits] = useState<Visit[]>(initialData.visits);
   const [stats, setStats] = useState<DashboardStats>(initialData.stats);
-  const [loading, setLoading] = useState(false); // Initially false because we have data
+  const [loading, setLoading] = useState(initialData.visits.length === 0);
+  const showSkeleton = loading && visits.length === 0;
 
   // Refresh function (still needed for manual refresh)
   const fetchDashboardData = useCallback(async () => {
@@ -159,12 +160,24 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
   return (
     <div className="max-w-7xl mx-auto space-y-8 p-6">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Obecnie w firmie" value={stats.active.toString()} change="Teraz" neutral />
-        <StatCard title="Dzisiejsze wizyty" value={stats.todayVisits.toString()} change="Dzisiaj" neutral />
-        <StatCard title="Średni czas wizyty (dziś)" value={stats.todayAvgTime} change="Średnia" neutral />
-        <StatCard title="Średni czas wizyty (ogółem)" value={stats.totalAvgTime} change="Średnia" neutral />
-      </div>
+      {showSkeleton ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="bg-card rounded-xl border border-border p-6">
+              <div className="h-4 w-32 bg-muted rounded" />
+              <div className="mt-4 h-8 w-20 bg-muted rounded" />
+              <div className="mt-3 h-3 w-24 bg-muted rounded" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatCard title="Obecnie w firmie" value={stats.active.toString()} change="Teraz" neutral />
+          <StatCard title="Dzisiejsze wizyty" value={stats.todayVisits.toString()} change="Dzisiaj" neutral />
+          <StatCard title="Średni czas wizyty (dziś)" value={stats.todayAvgTime} change="Średnia" neutral />
+          <StatCard title="Średni czas wizyty (ogółem)" value={stats.totalAvgTime} change="Średnia" neutral />
+        </div>
+      )}
 
       {/* Active Visits Table */}
       <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
@@ -183,7 +196,15 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
           </button>
         </div>
 
-        {loading ? (
+        {showSkeleton ? (
+          <div className="p-6 animate-pulse">
+            <div className="space-y-4">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-10 bg-muted/60 rounded" />
+              ))}
+            </div>
+          </div>
+        ) : loading ? (
           <div className="p-16 flex justify-center">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
           </div>
