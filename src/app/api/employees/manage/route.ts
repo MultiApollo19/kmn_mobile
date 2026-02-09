@@ -57,9 +57,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, id: targetId });
   } catch (error: unknown) {
     console.error('API Error:', error);
-    const message = error instanceof Error ? error.message : 'Wystąpił błąd serwera';
+    const err = error as { message?: string; code?: string; details?: string | null; hint?: string | null };
+    const message = err?.message || 'Wystąpił błąd serwera';
     return NextResponse.json(
-      { error: message },
+      {
+        error: message,
+        code: err?.code ?? null,
+        details: err?.details ?? null,
+        hint: err?.hint ?? null
+      },
       { status: 500 }
     );
   }
