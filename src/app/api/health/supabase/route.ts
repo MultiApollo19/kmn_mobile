@@ -29,13 +29,26 @@ export async function GET() {
 
     return NextResponse.json(info, { status: res.ok ? 200 : 502 });
   } catch (error: unknown) {
-    const err = error as { message?: string; code?: string; cause?: unknown };
+    const err = error as {
+      message?: string;
+      code?: string;
+      cause?: { message?: string; code?: string; errno?: number; syscall?: string; hostname?: string };
+    };
     return NextResponse.json(
       {
         ok: false,
         supabaseUrl: url,
         error: err?.message || 'Fetch failed',
-        code: err?.code ?? null
+        code: err?.code ?? null,
+        cause: err?.cause
+          ? {
+              message: err.cause.message ?? null,
+              code: err.cause.code ?? null,
+              errno: err.cause.errno ?? null,
+              syscall: err.cause.syscall ?? null,
+              hostname: err.cause.hostname ?? null
+            }
+          : null
       },
       { status: 502 }
     );
