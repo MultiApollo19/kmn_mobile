@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useRef } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/src/lib/supabase';
 import { useRouter } from 'next/navigation';
 
@@ -106,14 +106,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const warningInterval = useRef<number | null>(null);
   const activityHandlerRef = useRef<(() => void) | null>(null);
 
-  const clearLogoutTimer = () => {
+  const clearLogoutTimer = useCallback(() => {
     if (logoutTimer.current) {
       window.clearTimeout(logoutTimer.current);
       logoutTimer.current = null;
     }
-  };
+  }, []);
 
-  const clearWarningTimers = () => {
+  const clearWarningTimers = useCallback(() => {
     if (warningTimer.current) {
       window.clearTimeout(warningTimer.current);
       warningTimer.current = null;
@@ -123,23 +123,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       warningInterval.current = null;
     }
     setSessionWarningSeconds(null);
-  };
+  }, []);
 
-  const performLogout = async () => {
+  const performLogout = useCallback(async () => {
     await supabase.auth.signOut().catch(() => {});
     localStorage.removeItem('kmn_auth');
     setUser(null);
     try { router.push('/login'); } catch {}
-  };
+  }, [router]);
 
-  const scheduleLogout = (ms: number) => {
+  const scheduleLogout = useCallback((ms: number) => {
     clearLogoutTimer();
     logoutTimer.current = window.setTimeout(() => {
       void performLogout();
     }, ms);
-  };
+  }, [clearLogoutTimer, performLogout]);
 
-  const startWarningCountdown = (expiresAt: number) => {
+  const startWarningCountdown = useCallback((expiresAt: number) => {
     const updateCountdown = () => {
       const remainingMs = expiresAt - Date.now();
       const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
@@ -153,9 +153,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updateCountdown();
     if (warningInterval.current) window.clearInterval(warningInterval.current);
     warningInterval.current = window.setInterval(updateCountdown, 1000);
-  };
+  }, []);
 
-  const scheduleWarning = (expiresAt: number, enabled: boolean) => {
+  const scheduleWarning = useCallback((expiresAt: number, enabled: boolean) => {
     clearWarningTimers();
     if (!enabled) return;
     const warnAt = expiresAt - SESSION_WARNING_LEAD_MS;
@@ -167,20 +167,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     warningTimer.current = window.setTimeout(() => {
       startWarningCountdown(expiresAt);
     }, delay);
-  };
+  }, [clearWarningTimers, startWarningCountdown]);
 
-  const updateSessionTimers = (expiresAt: number, enableWarning: boolean) => {
+  const updateSessionTimers = useCallback((expiresAt: number, enableWarning: boolean) => {
     const ms = Math.max(0, expiresAt - Date.now());
     scheduleLogout(ms);
     scheduleWarning(expiresAt, enableWarning);
-  };
+  }, [scheduleLogout, scheduleWarning]);
 
   const isAdminRoute = () => {
     if (typeof window === 'undefined') return false;
     return window.location.pathname.startsWith('/admin');
   };
 
-  const setupInactivityTracking = (idleMs: number) => {
+  const setupInactivityTracking = useCallback((idleMs: number) => {
     const refreshExpiry = () => {
       const stored = localStorage.getItem('kmn_auth');
       if (!stored) return;
@@ -205,9 +205,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('keydown', handler);
     window.addEventListener('touchstart', handler, { passive: true });
     window.addEventListener('scroll', handler, { passive: true });
-  };
+  }, [updateSessionTimers]);
 
-  const teardownInactivityTracking = () => {
+  const teardownInactivityTracking = useCallback(() => {
     const handler = activityHandlerRef.current;
     if (!handler) return;
     window.removeEventListener('mousemove', handler);
@@ -216,7 +216,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.removeEventListener('touchstart', handler);
     window.removeEventListener('scroll', handler);
     activityHandlerRef.current = null;
-  };
+  }, []);
 
   const getStoredAuth = () => {
     if (typeof window === 'undefined') return null;
@@ -271,12 +271,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [router]);
+  }, [clearWarningTimers, router, updateSessionTimers]);
 
   useEffect(() => {
     if (!user) {
       teardownInactivityTracking();
       clearLogoutTimer();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       clearWarningTimers();
       return;
     }
@@ -293,7 +294,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       teardownInactivityTracking();
     };
-  }, [user]);
+  }, [clearLogoutTimer, clearWarningTimers, scheduleLogout, setupInactivityTracking, teardownInactivityTracking, user]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -308,7 +309,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       delete window.kmnShowSessionWarning;
     };
-  }, []);
+  }, [clearWarningTimers, startWarningCountdown]);
 
   useEffect(() => {
     if (!user || typeof window === 'undefined') return;

@@ -226,14 +226,6 @@ export default function AdminSettingsClient() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-10 h-10 text-primary animate-spin" />
-      </div>
-    );
-  }
-
   const sortedBadges = [...badges].sort((a, b) =>
     compareBadgeNumber(a.badge_number, b.badge_number)
   );
@@ -247,6 +239,14 @@ export default function AdminSettingsClient() {
     if (!searchQuery) return sortedBadges;
     return sortedBadges.filter((badge) => badge.badge_number.toLowerCase().includes(searchQuery));
   }, [searchQuery, sortedBadges]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-10 h-10 text-primary animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

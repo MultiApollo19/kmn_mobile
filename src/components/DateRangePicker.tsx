@@ -8,7 +8,6 @@ import {
   endOfMonth,
   endOfWeek,
   format,
-  isAfter,
   isBefore,
   isSameDay,
   isSameMonth,
@@ -43,6 +42,7 @@ export default function DateRangePicker({ value, onChange }: DateRangePickerProp
 
   useEffect(() => {
     if (value.start) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBaseMonth(startOfMonth(value.start));
     }
   }, [value.start]);

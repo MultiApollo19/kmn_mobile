@@ -174,6 +174,7 @@ export default function AdminLogsPage() {
   }, [actorName, category, customEnd, customStart, dateRange, eventType, level, limit, resourceType, searchTerm, user]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchLogs();
   }, [fetchLogs]);
 
@@ -396,7 +397,7 @@ export default function AdminLogsPage() {
                     <td className="px-4 py-3">
                       {log.context ? (
                         <details className="text-xs text-muted-foreground">
-                          <summary className="cursor-pointer">Pokaz</summary>
+                          <summary className="cursor-pointer">Pokaż</summary>
                           <pre className="mt-2 whitespace-pre-wrap wrap-break-word">
                             {JSON.stringify(log.context, null, 2)}
                           </pre>
@@ -419,7 +420,7 @@ export default function AdminLogsPage() {
             <h3 className="font-semibold mb-4">Wybierz zakres</h3>
             <form onSubmit={handleCustomRangeSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Data poczatkowa</label>
+                <label className="block text-sm font-medium mb-1">Data początkowa</label>
                 <input
                   type="date"
                   value={customStart}

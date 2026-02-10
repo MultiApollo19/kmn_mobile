@@ -344,14 +344,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {sessionWarningSeconds !== null && sessionWarningSeconds > 0 && (
           <div className="fixed bottom-6 right-6 z-50 max-w-sm w-[calc(100%-3rem)] rounded-xl border border-amber-200 bg-amber-50 text-amber-950 shadow-lg p-4 flex flex-col gap-3">
             <div className="text-sm font-medium">
-              Sesja wygasnie za {formatSessionCountdown(sessionWarningSeconds)}. Zapisz zmiany, aby uniknac utraty danych.
+              Sesja wygaśnie za {formatSessionCountdown(sessionWarningSeconds)}. Zapisz zmiany, aby uniknąć utraty danych.
             </div>
             <button
               type="button"
               onClick={extendSession}
               className="inline-flex items-center justify-center px-3 py-2 rounded-md border border-amber-300 bg-white text-amber-900 text-xs font-semibold hover:bg-amber-100 transition-colors"
             >
-              Przedluz sesje
+              Przedłuż sesję
             </button>
           </div>
         )}

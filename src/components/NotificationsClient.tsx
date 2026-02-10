@@ -121,7 +121,7 @@ export default function NotificationsClient() {
 
 			if (queryError) throw queryError;
 			setItems((data || []) as EventLog[]);
-		} catch (err) {
+		} catch {
 			setError('Nie udało się pobrać zdarzeń.');
 			setItems([]);
 		} finally {
@@ -130,7 +130,6 @@ export default function NotificationsClient() {
 	}, [user]);
 
 	useEffect(() => {
-		if (!user) return;
 		void fetchAlerts();
 		const interval = window.setInterval(fetchAlerts, 60 * 1000);
 		return () => window.clearInterval(interval);
