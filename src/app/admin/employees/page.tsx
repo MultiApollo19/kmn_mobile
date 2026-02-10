@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/src/lib/supabase';
+import { createActorClient } from '@/src/lib/supabaseActor';
+import { useAuth } from '@/src/hooks/useAuth';
 import { Plus, Trash2, Edit2, Save, X, Loader2, Building2, User, Shield, Users } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import Modal from '@/src/components/Modal';
@@ -21,6 +23,7 @@ type Employee = {
 };
 
 export default function EmployeesPage() {
+  const { user } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,7 +122,8 @@ export default function EmployeesPage() {
   const handleDelete = async (id: number) => {
     if (!confirm('Czy na pewno chcesz usunąć tego pracownika?')) return;
 
-    const { error } = await supabase
+    const actorClient = createActorClient(user);
+    const { error } = await actorClient
       .from('employees')
       .delete()
       .eq('id', id);
@@ -156,7 +160,10 @@ export default function EmployeesPage() {
       const response = await fetch('/api/employees/manage', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
+          'Content-Type': 'application/json',
+          ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
+          ...(user?.name ? { 'x-employee-name': user.name } : {}),
+          ...(user?.department ? { 'x-employee-department-name': user.department } : {})
         },
         body: JSON.stringify({
             id: isEditing || null,

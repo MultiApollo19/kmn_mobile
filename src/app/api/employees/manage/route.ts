@@ -8,6 +8,14 @@ export async function POST(request: Request) {
 
     // Use the caller's authorization (Admin) to perform operations
     const authHeader = request.headers.get('Authorization');
+    const actorHeaders: Record<string, string> = {};
+    const actorId = request.headers.get('x-employee-id');
+    const actorName = request.headers.get('x-employee-name');
+    const actorDeptName = request.headers.get('x-employee-department-name');
+    if (actorId) actorHeaders['x-employee-id'] = actorId;
+    if (actorName) actorHeaders['x-employee-name'] = actorName;
+    if (actorDeptName) actorHeaders['x-employee-department-name'] = actorDeptName;
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -15,6 +23,7 @@ export async function POST(request: Request) {
         global: {
           headers: {
             Authorization: authHeader || '',
+            ...actorHeaders
           },
         },
       }

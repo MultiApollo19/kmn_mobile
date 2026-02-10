@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/src/lib/supabase';
+import { createActorClient } from '@/src/lib/supabaseActor';
+import { useAuth } from '@/src/hooks/useAuth';
 import { Plus, Trash2, Edit2, Save, X, Loader2, Building2 } from 'lucide-react';
 import Modal from '@/src/components/Modal';
 
@@ -11,6 +13,7 @@ type Department = {
 };
 
 export default function DepartmentsPage() {
+  const { user } = useAuth();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState<number | null>(null);
@@ -74,7 +77,8 @@ export default function DepartmentsPage() {
 
     if (!confirm('Czy na pewno chcesz usunąć ten dział?')) return;
 
-    const { error } = await supabase
+    const actorClient = createActorClient(user);
+    const { error } = await actorClient
       .from('departments')
       .delete()
       .eq('id', id);
@@ -97,13 +101,15 @@ export default function DepartmentsPage() {
 
     try {
       if (isAdding) {
-        const { error } = await supabase
+        const actorClient = createActorClient(user);
+        const { error } = await actorClient
           .from('departments')
           .insert([{ name: formData.name }]);
         
         if (error) throw error;
       } else if (isEditing) {
-        const { error } = await supabase
+        const actorClient = createActorClient(user);
+        const { error } = await actorClient
           .from('departments')
           .update({ name: formData.name })
           .eq('id', isEditing);

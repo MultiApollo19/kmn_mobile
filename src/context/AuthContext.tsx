@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '@/src/lib/supabase';
-import { logEvent } from '@/src/lib/logging';
 import { useRouter } from 'next/navigation';
 
 
@@ -128,13 +127,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (!userData || !authEmail) {
-      void logEvent({
-        event_type: 'auth.failed',
-        level: 'warn',
-        action: 'login',
-        source: 'client',
-        context: { reason: 'invalid_pin' }
-      });
       throw new Error('Nieprawidłowy PIN');
     }
 
@@ -152,37 +144,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (logoutTimer.current) window.clearTimeout(logoutTimer.current);
       logoutTimer.current = window.setTimeout(() => {
         (async () => {
-          void logEvent({
-            event_type: 'auth.expired',
-            level: 'audit',
-            action: 'logout',
-            source: 'client',
-            actor: {
-              type: userData.type,
-              id: userData.id,
-              name: userData.name,
-              department_name: userData.department ?? null
-            }
-          });
           await supabase.auth.signOut().catch(() => {});
           localStorage.removeItem('kmn_auth');
           setUser(null);
           try { router.push('/login'); } catch {}
         })();
       }, sessionMs);
-
-      void logEvent({
-        event_type: 'auth.login',
-        level: 'audit',
-        action: 'login',
-        source: 'client',
-        actor: {
-          type: userData.type,
-          id: userData.id,
-          name: userData.name,
-          department_name: userData.department ?? null
-        }
-      });
 
       router.push(redirectPath);
       return userData;
@@ -195,20 +162,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    if (user) {
-      void logEvent({
-        event_type: 'auth.logout',
-        level: 'audit',
-        action: 'logout',
-        source: 'client',
-        actor: {
-          type: user.type,
-          id: user.id,
-          name: user.name,
-          department_name: user.department ?? null
-        }
-      });
-    }
     await supabase.auth.signOut();
     localStorage.removeItem('kmn_auth');
     setUser(null);
