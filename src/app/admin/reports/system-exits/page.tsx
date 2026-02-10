@@ -14,6 +14,7 @@ import {
   CalendarRange
 } from 'lucide-react';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
+import DateRangePicker from '@/src/components/DateRangePicker';
 
 type VisitSummary = {
   id: number;
@@ -130,6 +131,15 @@ export default function SystemExitsPage() {
   const totalPages = Math.ceil(filteredVisits.length / pageSize);
   const paginatedVisits = filteredVisits.slice((page - 1) * pageSize, page * pageSize);
 
+  const summaryByEmployee = filteredVisits.reduce<Record<string, number>>((acc, visit) => {
+    const name = visit.employees?.name?.trim() || 'Nieznany';
+    acc[name] = (acc[name] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const summaryEntries = Object.entries(summaryByEmployee)
+    .sort((a, b) => b[1] - a[1]);
+
   const [isExporting, setIsExporting] = useState(false);
 
   const exportToPDF = async () => {
@@ -191,6 +201,21 @@ export default function SystemExitsPage() {
         headStyles: { fillColor: [220, 38, 38], textColor: [255, 255, 255], fontStyle: 'bold', lineWidth: 0.1 },
       });
 
+      const summaryRows = summaryEntries.map(([name, count]) => [name, String(count)]);
+      if (summaryRows.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const nextY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 8 : 25;
+        autoTable(doc, {
+          theme: 'grid',
+          head: [['Podsumowanie niezakończonych wizyt', 'Liczba']],
+          body: summaryRows,
+          startY: nextY,
+          styles: { fontSize: 8, cellPadding: 2, font: 'Roboto', valign: 'middle', lineWidth: 0.1 },
+          headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.1 },
+          columnStyles: { 1: { halign: 'right' } }
+        });
+      }
+
       doc.save(`raport_system_exits_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
     } catch (err) {
       console.error('Export failed:', err);
@@ -208,11 +233,16 @@ export default function SystemExitsPage() {
     }
   };
 
+  const handleRangeChange = (next: { start: Date | null; end: Date | null }) => {
+    setCustomStart(next.start ? format(next.start, 'yyyy-MM-dd') : '');
+    setCustomEnd(next.end ? format(next.end, 'yyyy-MM-dd') : '');
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-[calc(100vh-120px)] gap-6">
       <div className="flex items-center gap-2 text-red-600 mb-2">
         <AlertTriangle className="w-5 h-5" />
-        <h2 className="text-xl font-bold text-slate-900">Niezamknięte wizyty</h2>
+        <h2 className="text-xl font-bold text-slate-900">Wizyty zakończone przez system</h2>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center bg-card p-4 rounded-xl border border-border shadow-sm">
@@ -241,89 +271,121 @@ export default function SystemExitsPage() {
         </div>
       </div>
 
-      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden min-h-[500px] flex flex-col">
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          </div>
-        ) : filteredVisits.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-              <AlertTriangle className="w-8 h-8 opacity-20" />
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-6">
+        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden min-h-[500px] flex flex-col">
+          {loading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground">Brak wpisów</h3>
-            <p className="text-sm max-w-xs text-center mt-2">W wybranym okresie nie odnotowano automatycznych wyjść.</p>
-          </div>
-        ) : (
-          <>
+          ) : filteredVisits.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8">
+              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                <AlertTriangle className="w-8 h-8 opacity-20" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground">Brak wpisów</h3>
+              <p className="text-sm max-w-xs text-center mt-2">W wybranym okresie nie odnotowano automatycznych wyjść.</p>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-red-50 text-red-900 font-semibold border-b border-red-100">
+                    <tr>
+                      <th className="px-6 py-4">Data Wizyty</th>
+                      <th className="px-6 py-4">Pracownik (Odpowiedzialny)</th>
+                      <th className="px-6 py-4">Interesant</th>
+                      <th className="px-6 py-4">Cel</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {paginatedVisits.map((visit) => (
+                      <tr key={visit.id} className="hover:bg-muted/10 transition-colors cursor-default">
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col">
+                            <span className="font-medium text-foreground">{format(new Date(visit.entry_time), 'yyyy-MM-dd')}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(visit.entry_time), 'HH:mm')} - {visit.exit_time ? format(new Date(visit.exit_time), 'HH:mm') : '?'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-red-700">{visit.employees?.name}</span>
+                            <span className="text-xs text-muted-foreground">{visit.employees?.departments?.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                           <div className="flex flex-col">
+                              <span className="font-medium text-foreground">{visit.visitor_name}</span>
+                              <span className="text-xs text-slate-500 font-mono">{visit.badges?.badge_number}</span>
+                           </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-slate-600">{visit.visit_purposes?.name}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-muted/10">
+                   <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-2 border rounded disabled:opacity-50"><ChevronLeft className="w-4 h-4"/></button>
+                   <span className="text-xs">Strona {page} z {totalPages}</span>
+                   <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-2 border rounded disabled:opacity-50"><ChevronRight className="w-4 h-4"/></button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {!loading && filteredVisits.length > 0 && (
+          <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-border bg-muted/10">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Podsumowanie niezakończonych wizyt
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Zestawienie liczby wizyt zakończonych przez system w wybranym zakresie.
+              </p>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="bg-red-50 text-red-900 font-semibold border-b border-red-100">
+                <thead className="bg-muted/30 text-muted-foreground font-semibold border-b border-border">
                   <tr>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Data Wizyty</th>
-                    <th className="px-6 py-4">Pracownik (Odpowiedzialny)</th>
-                    <th className="px-6 py-4">Interesant</th>
-                    <th className="px-6 py-4">Cel</th>
+                    <th className="px-6 py-3">Pracownik</th>
+                    <th className="px-6 py-3 text-right">Liczba wizyt</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {paginatedVisits.map((visit) => (
-                    <tr key={visit.id} className="hover:bg-muted/10 transition-colors cursor-default">
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-700">
-                          AUTO-EXIT
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col">
-                          <span className="font-medium text-foreground">{format(new Date(visit.entry_time), 'yyyy-MM-dd')}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {format(new Date(visit.entry_time), 'HH:mm')} - {visit.exit_time ? format(new Date(visit.exit_time), 'HH:mm') : '?'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-red-700">{visit.employees?.name}</span>
-                          <span className="text-xs text-muted-foreground">{visit.employees?.departments?.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                         <div className="flex flex-col">
-                            <span className="font-medium text-foreground">{visit.visitor_name}</span>
-                            <span className="text-xs text-slate-500 font-mono">{visit.badges?.badge_number}</span>
-                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-slate-600">{visit.visit_purposes?.name}</span>
-                      </td>
+                  {summaryEntries.map(([name, count]) => (
+                    <tr key={name} className="hover:bg-muted/10 transition-colors">
+                      <td className="px-6 py-3 font-medium text-foreground">{name}</td>
+                      <td className="px-6 py-3 text-right font-semibold text-red-700">{count}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-muted/10">
-                 <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-2 border rounded disabled:opacity-50"><ChevronLeft className="w-4 h-4"/></button>
-                 <span className="text-xs">Strona {page} z {totalPages}</span>
-                 <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-2 border rounded disabled:opacity-50"><ChevronRight className="w-4 h-4"/></button>
-              </div>
-            )}
-          </>
+          </div>
         )}
       </div>
 
       {showDateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl">
             <h3 className="font-semibold mb-4">Wybierz zakres</h3>
             <form onSubmit={handleCustomRangeSubmit} className="space-y-4">
-              <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="w-full border p-2 rounded" required />
-              <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="w-full border p-2 rounded" required />
+              <DateRangePicker
+                value={{
+                  start: customStart ? new Date(customStart) : null,
+                  end: customEnd ? new Date(customEnd) : null
+                }}
+                onChange={handleRangeChange}
+              />
               <div className="flex gap-2 justify-end">
                 <button type="button" onClick={() => setShowDateModal(false)} className="px-4 py-2 border rounded">Anuluj</button>
-                <button type="submit" className="px-4 py-2 bg-primary text-white rounded">Zastosuj</button>
+                <button type="submit" disabled={!customStart || !customEnd} className="px-4 py-2 bg-primary text-white rounded disabled:opacity-60">Zastosuj</button>
               </div>
             </form>
           </div>

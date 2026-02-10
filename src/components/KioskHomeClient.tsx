@@ -33,6 +33,13 @@ export interface Badge {
   is_active: boolean;
 }
 
+const BADGE_COLLATOR = new Intl.Collator('pl', { numeric: true, sensitivity: 'base' });
+
+const normalizeBadgeNumber = (value: string) => value.trim();
+
+const compareBadgeNumber = (left: string, right: string) =>
+  BADGE_COLLATOR.compare(normalizeBadgeNumber(left), normalizeBadgeNumber(right));
+
 interface ActiveVisit {
   id: number;
   entry_time: string;
@@ -282,7 +289,11 @@ export default function KioskHomeClient({
   }, [user, fetchData]);
 
   // Derived State
-  const availableBadges = badges.filter(b => 
+  const sortedBadges = [...badges].sort((a, b) =>
+    compareBadgeNumber(a.badge_number, b.badge_number)
+  );
+
+  const availableBadges = sortedBadges.filter(b => 
     !usedBadgeNumbers.includes(b.badge_number)
   );
   const showSkeleton = loadingVisits && purposes.length === 0 && badges.length === 0;
@@ -831,7 +842,7 @@ export default function KioskHomeClient({
                     onChange={e => setEditBadge(e.target.value)}
                     className="w-full pl-3 pr-8 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all appearance-none font-medium cursor-pointer"
                   >
-                    {badges.filter(b => 
+                    {sortedBadges.filter(b => 
                       // Show badge if it is NOT used by any OTHER visit (allow current visit's badge)
                       !usedBadgeNumbers.includes(b.badge_number) || b.badge_number === editingVisit.badge.badge_number
                     ).map(b => (

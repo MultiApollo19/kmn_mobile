@@ -19,10 +19,11 @@ export default function ScreenSizeWarning() {
     return !hasTouch || isDesktopSize;
   }, [pathname]);
 
-  const [isInvalid, setIsInvalid] = useState<boolean>(() => computeInvalid());
+  const [isInvalid, setIsInvalid] = useState<boolean>(false);
 
   useEffect(() => {
     const checkScreen = () => setIsInvalid(computeInvalid());
+    checkScreen();
     window.addEventListener('resize', checkScreen);
     return () => window.removeEventListener('resize', checkScreen);
   }, [computeInvalid, pathname]);

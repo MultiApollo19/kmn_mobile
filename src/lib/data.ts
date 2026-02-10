@@ -52,6 +52,7 @@ export const getAdminDashboardData = async () => {
       .select(`
         id,
         entry_time,
+        exit_time,
         visitor_name,
         notes,
         employees (

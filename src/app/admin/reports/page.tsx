@@ -28,8 +28,8 @@ export default function ReportsDashboard() {
             
             <h2 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-indigo-700 transition-colors">Pełna Historia Wizyt</h2>
             <p className="text-slate-500 mb-8 flex-1">
-              Przeglądaj wszystkie zarejestrowane wizyty. Filtruj po dacie, nazwisku interesanta lub pracowniku.
-              Dostęp do pełnego archiwum (w tym usuniętych z bieżącego widoku).
+              Przeglądaj wszystkie zarejestrowane wizyty.
+              Dostęp do pełnego archiwum.
             </p>
             
             <div className="flex items-center text-indigo-600 font-semibold group-hover:translate-x-2 transition-transform">
@@ -52,10 +52,10 @@ export default function ReportsDashboard() {
               <AlertTriangle className="w-7 h-7" />
             </div>
             
-            <h2 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-red-700 transition-colors">Niezamknięte Wizyty (System Exit)</h2>
+            <h2 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-red-700 transition-colors">Wizyty zakończone przez system</h2>
             <p className="text-slate-500 mb-8 flex-1">
               Lista pracowników, którzy zapomnieli odnotować wyjście gościa.
-              Pokaż wizyty zamknięte automatycznie przez system po godzinach pracy.
+              Wizyty zamknięte automatycznie przez system po godzinach pracy.
             </p>
             
             <div className="flex items-center text-red-600 font-semibold group-hover:translate-x-2 transition-transform">
