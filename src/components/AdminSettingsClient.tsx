@@ -229,7 +229,7 @@ export default function AdminSettingsClient() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 p-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center gap-4">
         <SettingsIcon className="w-8 h-8 text-primary" />

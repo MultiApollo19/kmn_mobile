@@ -87,15 +87,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden md:pl-64">
         {/* Top Header */}
         <header className="bg-card border-b border-border h-16 flex items-center justify-between px-6 lg:px-8">
-          <h2 className="text-lg font-semibold text-foreground">
-            {pathname === '/admin' ? 'Pulpit nawigacyjny' : 
-             pathname?.includes('visitors') ? 'Lista interesantów' :
-             pathname?.includes('logs') ? 'Logi systemu' :
-             pathname?.includes('reports') ? 'Raporty' :
-             pathname?.includes('settings') ? 'Ustawienia' : 'Panel'}
-          </h2>
-          
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 ml-auto">
             <div className="relative hidden sm:block">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <input 
@@ -112,8 +104,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </header>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-auto p-6 lg:p-8">
-          {children}
+        <div className="flex-1 overflow-auto">
+          <div className="admin-page">
+            {children}
+          </div>
         </div>
       </main>
     </div>

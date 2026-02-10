@@ -5,7 +5,7 @@ import { FileText, AlertTriangle, Clock, ChevronRight } from 'lucide-react';
 
 export default function ReportsDashboard() {
   return (
-    <div className="max-w-[1600px] mx-auto space-y-8">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Raporty</h1>
         <p className="text-slate-500 mt-1">Wybierz rodzaj raportu, który chcesz wygenerować.</p>

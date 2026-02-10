@@ -192,7 +192,7 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
   }, [selectedVisit]);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 p-6">
+    <div className="space-y-8">
       {/* Stats Grid */}
       {showSkeleton ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
