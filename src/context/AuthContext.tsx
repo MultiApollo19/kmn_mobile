@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '@/src/lib/supabase';
+import { logEvent } from '@/src/lib/logging';
 import { useRouter } from 'next/navigation';
 
 
@@ -127,6 +128,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (!userData || !authEmail) {
+      void logEvent({
+        event_type: 'auth.failed',
+        level: 'warn',
+        action: 'login',
+        source: 'client',
+        context: { reason: 'invalid_pin' }
+      });
       throw new Error('Nieprawidłowy PIN');
     }
 
@@ -144,26 +152,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (logoutTimer.current) window.clearTimeout(logoutTimer.current);
       logoutTimer.current = window.setTimeout(() => {
         (async () => {
+          void logEvent({
+            event_type: 'auth.expired',
+            level: 'audit',
+            action: 'logout',
+            source: 'client',
+            actor: {
+              type: userData.type,
+              id: userData.id,
+              name: userData.name,
+              department_name: userData.department ?? null
+            }
+          });
           await supabase.auth.signOut().catch(() => {});
           localStorage.removeItem('kmn_auth');
           setUser(null);
           try { router.push('/login'); } catch {}
         })();
       }, sessionMs);
-      
-      // 5. Log the login
-      // Note: This might fail if RLS requires auth.uid(). 
-      // If it fails, we catch it but don't block login (or maybe we should?).
-      // For now, let's try to insert. If 'user_logs' is public-insertable or we don't care about RLS for logs, it's fine.
-      try {
-          await supabase.from('user_logs').insert({
-            user_name: userData.name,
-            user_type: userData.type,
-            department_name: userData.department
-          });
-      } catch (logErr) {
-          console.warn("Failed to log login:", logErr);
-      }
+
+      void logEvent({
+        event_type: 'auth.login',
+        level: 'audit',
+        action: 'login',
+        source: 'client',
+        actor: {
+          type: userData.type,
+          id: userData.id,
+          name: userData.name,
+          department_name: userData.department ?? null
+        }
+      });
 
       router.push(redirectPath);
       return userData;
@@ -176,6 +195,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    if (user) {
+      void logEvent({
+        event_type: 'auth.logout',
+        level: 'audit',
+        action: 'logout',
+        source: 'client',
+        actor: {
+          type: user.type,
+          id: user.id,
+          name: user.name,
+          department_name: user.department ?? null
+        }
+      });
+    }
     await supabase.auth.signOut();
     localStorage.removeItem('kmn_auth');
     setUser(null);
