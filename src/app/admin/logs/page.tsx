@@ -228,7 +228,7 @@ export default function AdminLogsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Szukaj po zdarzeniu lub aktorze..."
+              placeholder="Szukaj po zdarzeniu lub pracowniku..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
@@ -283,7 +283,7 @@ export default function AdminLogsPage() {
             />
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase text-muted-foreground">Aktor</label>
+            <label className="text-xs font-semibold uppercase text-muted-foreground">Pracownik</label>
             <input
               value={actorName}
               onChange={(e) => setActorName(e.target.value)}
@@ -363,8 +363,8 @@ export default function AdminLogsPage() {
                   <th className="px-4 py-3">Czas</th>
                   <th className="px-4 py-3">Zdarzenie</th>
                   <th className="px-4 py-3">Poziom</th>
-                  <th className="px-4 py-3">Aktor</th>
-                  <th className="px-4 py-3">Zasob</th>
+                  <th className="px-4 py-3">Pracownik</th>
+                  <th className="px-4 py-3">Zasób</th>
                   <th className="px-4 py-3">Akcja</th>
                   <th className="px-4 py-3">Szczegóły</th>
                 </tr>
