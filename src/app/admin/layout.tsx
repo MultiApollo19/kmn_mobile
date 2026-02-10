@@ -42,9 +42,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen bg-muted/20 flex font-sans text-foreground">
+    <div className="h-screen bg-muted/20 flex font-sans text-foreground overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 bg-card border-r border-border shrink-0 hidden md:flex flex-col">
+      <aside className="w-64 bg-card border-r border-border shrink-0 hidden md:flex flex-col fixed inset-y-0 left-0">
         <div className="p-6 border-b border-border">
           <h1 className="text-xl font-bold tracking-tight">Panel administracyjny</h1>
           <p className="text-xs text-muted-foreground mt-1">System zarządzania interesantami</p>
@@ -84,7 +84,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden md:pl-64">
         {/* Top Header */}
         <header className="bg-card border-b border-border h-16 flex items-center justify-between px-6 lg:px-8">
           <h2 className="text-lg font-semibold text-foreground">
