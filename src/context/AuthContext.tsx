@@ -22,6 +22,71 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const AUTO_EXIT_TIMEZONE = 'Europe/Warsaw';
+const AUTO_EXIT_HOUR = 16;
+
+type TimeZoneParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+};
+
+const getTimeZoneParts = (date: Date, timeZone: string): TimeZoneParts => {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(date).reduce<Record<string, string>>((acc, part) => {
+    if (part.type !== 'literal') acc[part.type] = part.value;
+    return acc;
+  }, {});
+
+  return {
+    year: Number(parts.year),
+    month: Number(parts.month),
+    day: Number(parts.day),
+    hour: Number(parts.hour),
+    minute: Number(parts.minute),
+    second: Number(parts.second),
+  };
+};
+
+const getTimeZoneOffsetMs = (timeZone: string, date: Date) => {
+  const parts = getTimeZoneParts(date, timeZone);
+  const asUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  return asUtc - date.getTime();
+};
+
+const zonedTimeToUtcIso = (
+  timeZone: string,
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number
+) => {
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, second);
+  const offset = getTimeZoneOffsetMs(timeZone, new Date(utcGuess));
+  return new Date(utcGuess - offset).toISOString();
+};
+
+const shouldAutoExit = (parts: TimeZoneParts) => {
+  if (parts.hour > AUTO_EXIT_HOUR) return true;
+  if (parts.hour < AUTO_EXIT_HOUR) return false;
+  return parts.minute >= 0;
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -172,6 +237,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       teardownInactivityTracking();
     };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || typeof window === 'undefined') return;
+
+    const runAutoExit = async () => {
+      const nowParts = getTimeZoneParts(new Date(), AUTO_EXIT_TIMEZONE);
+      if (!shouldAutoExit(nowParts)) return;
+
+      const baseUtc = new Date(Date.UTC(nowParts.year, nowParts.month - 1, nowParts.day));
+      const nextUtc = new Date(baseUtc);
+      nextUtc.setUTCDate(nextUtc.getUTCDate() + 1);
+
+      const startIso = zonedTimeToUtcIso(
+        AUTO_EXIT_TIMEZONE,
+        nowParts.year,
+        nowParts.month,
+        nowParts.day,
+        0,
+        0,
+        0
+      );
+      const endIso = zonedTimeToUtcIso(
+        AUTO_EXIT_TIMEZONE,
+        nextUtc.getUTCFullYear(),
+        nextUtc.getUTCMonth() + 1,
+        nextUtc.getUTCDate(),
+        0,
+        0,
+        0
+      );
+      const cutoffIso = zonedTimeToUtcIso(
+        AUTO_EXIT_TIMEZONE,
+        nowParts.year,
+        nowParts.month,
+        nowParts.day,
+        AUTO_EXIT_HOUR,
+        0,
+        0
+      );
+
+      try {
+        const { error } = await supabase
+          .from('visits')
+          .update({ exit_time: cutoffIso, is_system_exit: true })
+          .is('exit_time', null)
+          .gte('entry_time', startIso)
+          .lt('entry_time', endIso);
+
+        if (error) {
+          console.error('Auto-exit update failed:', error);
+        }
+      } catch (err) {
+        console.error('Auto-exit update error:', err);
+      }
+    };
+
+    void runAutoExit();
   }, [user]);
 
   const loginWithPin = async (pin: string, redirectPath: string = '/') => {
