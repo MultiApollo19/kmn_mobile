@@ -397,7 +397,7 @@ export default function AdminLogsPage() {
                       {log.context ? (
                         <details className="text-xs text-muted-foreground">
                           <summary className="cursor-pointer">Pokaz</summary>
-                          <pre className="mt-2 whitespace-pre-wrap break-words">
+                          <pre className="mt-2 whitespace-pre-wrap wrap-break-word">
                             {JSON.stringify(log.context, null, 2)}
                           </pre>
                         </details>

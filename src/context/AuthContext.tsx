@@ -4,6 +4,12 @@ import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '@/src/lib/supabase';
 import { useRouter } from 'next/navigation';
 
+declare global {
+  interface Window {
+    kmnShowSessionWarning?: (seconds?: number) => void;
+  }
+}
+
 
 export type UserType = {
   id: string | number;
@@ -16,7 +22,9 @@ export type UserType = {
 type AuthContextType = {
   user: UserType | null;
   loading: boolean;
+  sessionWarningSeconds: number | null;
   loginWithPin: (pin: string, redirectPath?: string) => Promise<UserType | void>;
+  extendSession: () => void;
   logout: () => void;
 };
 
@@ -24,6 +32,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const AUTO_EXIT_TIMEZONE = 'Europe/Warsaw';
 const AUTO_EXIT_HOUR = 16;
+const SESSION_WARNING_LEAD_MS = 2 * 60 * 1000;
 
 type TimeZoneParts = {
   year: number;
@@ -90,8 +99,11 @@ const shouldAutoExit = (parts: TimeZoneParts) => {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserType | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionWarningSeconds, setSessionWarningSeconds] = useState<number | null>(null);
   const router = useRouter();
   const logoutTimer = useRef<number | null>(null);
+  const warningTimer = useRef<number | null>(null);
+  const warningInterval = useRef<number | null>(null);
   const activityHandlerRef = useRef<(() => void) | null>(null);
 
   const clearLogoutTimer = () => {
@@ -99,6 +111,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.clearTimeout(logoutTimer.current);
       logoutTimer.current = null;
     }
+  };
+
+  const clearWarningTimers = () => {
+    if (warningTimer.current) {
+      window.clearTimeout(warningTimer.current);
+      warningTimer.current = null;
+    }
+    if (warningInterval.current) {
+      window.clearInterval(warningInterval.current);
+      warningInterval.current = null;
+    }
+    setSessionWarningSeconds(null);
   };
 
   const performLogout = async () => {
@@ -115,6 +139,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, ms);
   };
 
+  const startWarningCountdown = (expiresAt: number) => {
+    const updateCountdown = () => {
+      const remainingMs = expiresAt - Date.now();
+      const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+      setSessionWarningSeconds(remainingSeconds);
+      if (remainingSeconds <= 0 && warningInterval.current) {
+        window.clearInterval(warningInterval.current);
+        warningInterval.current = null;
+      }
+    };
+
+    updateCountdown();
+    if (warningInterval.current) window.clearInterval(warningInterval.current);
+    warningInterval.current = window.setInterval(updateCountdown, 1000);
+  };
+
+  const scheduleWarning = (expiresAt: number, enabled: boolean) => {
+    clearWarningTimers();
+    if (!enabled) return;
+    const warnAt = expiresAt - SESSION_WARNING_LEAD_MS;
+    const delay = warnAt - Date.now();
+    if (delay <= 0) {
+      startWarningCountdown(expiresAt);
+      return;
+    }
+    warningTimer.current = window.setTimeout(() => {
+      startWarningCountdown(expiresAt);
+    }, delay);
+  };
+
+  const updateSessionTimers = (expiresAt: number, enableWarning: boolean) => {
+    const ms = Math.max(0, expiresAt - Date.now());
+    scheduleLogout(ms);
+    scheduleWarning(expiresAt, enableWarning);
+  };
+
   const isAdminRoute = () => {
     if (typeof window === 'undefined') return false;
     return window.location.pathname.startsWith('/admin');
@@ -129,7 +189,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (parsed && typeof parsed === 'object' && 'user' in parsed) {
           const nextExpiresAt = Date.now() + idleMs;
           localStorage.setItem('kmn_auth', JSON.stringify({ user: parsed.user, expiresAt: nextExpiresAt }));
-          scheduleLogout(idleMs);
+          const isAdminUser = parsed.user.role === 'admin' || parsed.user.role === 'department_admin';
+          updateSessionTimers(nextExpiresAt, isAdminUser);
         }
       } catch {
         // Ignore invalid storage
@@ -157,51 +218,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     activityHandlerRef.current = null;
   };
 
+  const getStoredAuth = () => {
+    if (typeof window === 'undefined') return null;
+    const stored = localStorage.getItem('kmn_auth');
+    if (!stored) return null;
+    try {
+      const parsed = JSON.parse(stored) as { user: UserType; expiresAt?: number } | UserType;
+      if (parsed && typeof parsed === 'object' && 'user' in parsed) {
+        const payload = parsed as { user: UserType; expiresAt?: number };
+        if (payload.expiresAt && typeof payload.expiresAt === 'number') {
+          if (Date.now() > payload.expiresAt) {
+            localStorage.removeItem('kmn_auth');
+            return null;
+          }
+        }
+        return payload;
+      }
+      return { user: parsed as UserType };
+    } catch {
+      return null;
+    }
+  };
+
   // Restore session from localStorage or Supabase session
   useEffect(() => {
     const initializeAuth = async () => {
-      // 1. Check Supabase Session first
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        // We have a session, but we need the rich user details (name, role from DB)
-        // We can try to recover it from localStorage as a cache, or fetch it.
-        // For simplicity/robustness, we'll assume localStorage is the source of truth for UI state
-        // and Supabase Session is the source of truth for RLS.
-        const stored = localStorage.getItem('kmn_auth');
-        if (stored) {
-          try {
-            const parsed = JSON.parse(stored) as { user: UserType; expiresAt?: number } | UserType;
-            // New format: { user, expiresAt }
-            if (parsed && typeof parsed === 'object' && 'user' in parsed) {
-              const p = parsed as { user: UserType; expiresAt?: number };
-              if (p.expiresAt && typeof p.expiresAt === 'number') {
-                if (Date.now() > p.expiresAt) {
-                  localStorage.removeItem('kmn_auth');
-                  setUser(null);
-                } else {
-                  setUser(p.user);
-                  const ms = p.expiresAt - Date.now();
-                  if (ms > 0) {
-                    scheduleLogout(ms);
-                  }
-                }
-              } else {
-                setUser(p.user);
-              }
-            } else {
-              // Backwards compatibility: stored is plain UserType
-              setUser(parsed as UserType);
-            }
-          } catch {
-            // Invalid storage
-          }
+      const storedAuth = getStoredAuth();
+      if (storedAuth?.user) {
+        setUser(storedAuth.user);
+        if (storedAuth.expiresAt && typeof storedAuth.expiresAt === 'number') {
+          const isAdminUser = storedAuth.user.role === 'admin' || storedAuth.user.role === 'department_admin';
+          updateSessionTimers(storedAuth.expiresAt, isAdminUser);
         }
-      } else {
-        // No session, ensure no user state
-        localStorage.removeItem('kmn_auth');
-        setUser(null);
       }
+
+      await supabase.auth.getSession();
       setLoading(false);
     };
 
@@ -209,10 +260,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-       if (!session) {
-         setUser(null);
-         localStorage.removeItem('kmn_auth');
-       }
+      if (!session) {
+        const storedAuth = getStoredAuth();
+        if (!storedAuth?.user) {
+          setUser(null);
+          localStorage.removeItem('kmn_auth');
+          clearWarningTimers();
+        }
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -222,6 +277,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) {
       teardownInactivityTracking();
       clearLogoutTimer();
+      clearWarningTimers();
       return;
     }
 
@@ -238,6 +294,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       teardownInactivityTracking();
     };
   }, [user]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    window.kmnShowSessionWarning = (seconds?: number) => {
+      const fallbackSeconds = 120;
+      const safeSeconds = Math.max(1, Math.floor(seconds ?? fallbackSeconds));
+      clearWarningTimers();
+      startWarningCountdown(Date.now() + safeSeconds * 1000);
+    };
+
+    return () => {
+      delete window.kmnShowSessionWarning;
+    };
+  }, []);
 
   useEffect(() => {
     if (!user || typeof window === 'undefined') return;
@@ -341,16 +412,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const sessionMs = isAdminPath ? 60 * 60 * 1000 : 60 * 1000;
       const expiresAt = Date.now() + sessionMs;
       localStorage.setItem('kmn_auth', JSON.stringify({ user: userData, expiresAt }));
-      if (logoutTimer.current) window.clearTimeout(logoutTimer.current);
-      logoutTimer.current = window.setTimeout(() => {
-        (async () => {
-          await supabase.auth.signOut().catch(() => {});
-          localStorage.removeItem('kmn_auth');
-          setUser(null);
-          try { router.push('/login'); } catch {}
-        })();
-      }, sessionMs);
-      scheduleLogout(sessionMs);
+      const isAdminUser = userData.role === 'admin' || userData.role === 'department_admin';
+      updateSessionTimers(expiresAt, isAdminUser);
       
       // 5. Log the login
       // Note: This might fail if RLS requires auth.uid(). 
@@ -379,14 +442,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     teardownInactivityTracking();
     clearLogoutTimer();
+    clearWarningTimers();
     await supabase.auth.signOut().catch(() => {});
     localStorage.removeItem('kmn_auth');
     setUser(null);
     router.push('/login');
   };
 
+  const extendSession = () => {
+    const currentUser = user ?? getStoredAuth()?.user;
+    if (!currentUser) return;
+    const isAdminUser = currentUser.role === 'admin' || currentUser.role === 'department_admin';
+    const sessionMs = isAdminUser ? 60 * 60 * 1000 : 60 * 1000;
+    const expiresAt = Date.now() + sessionMs;
+    localStorage.setItem('kmn_auth', JSON.stringify({ user: currentUser, expiresAt }));
+    updateSessionTimers(expiresAt, isAdminUser);
+    setUser(currentUser);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithPin, logout }}>
+    <AuthContext.Provider value={{ user, loading, sessionWarningSeconds, loginWithPin, extendSession, logout }}>
       {children}
     </AuthContext.Provider>
   );

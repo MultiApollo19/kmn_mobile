@@ -3,21 +3,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/src/hooks/useAuth';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Users, FileText, Settings, Bell, Search, LogOut, Loader2, Building2, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, Search, LogOut, Loader2, Building2, ClipboardList } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/src/lib/utils';
 import { createActorClient } from '@/src/lib/supabaseActor';
+import NotificationsClient from '@/src/components/NotificationsClient';
 
 type SearchResult = {
   id: string;
   label: string;
   href: string;
   kind: 'page' | 'employee' | 'department' | 'purpose' | 'badge';
+  keywords?: string[];
   meta?: string;
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, sessionWarningSeconds, extendSession } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [searchValue, setSearchValue] = useState('');
@@ -109,14 +111,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return matched ? matched[1] : null;
   }, [pageMeta, pathname]);
 
-  const routeItems = useMemo(() =>
+  const formatSessionCountdown = (seconds: number) => {
+    const safeSeconds = Math.max(0, seconds);
+    const minutes = Math.floor(safeSeconds / 60);
+    const remainingSeconds = safeSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+  };
+
+  const routeItems = useMemo<SearchResult[]>(() =>
     navSections.flatMap((section) =>
       section.items.map((item) => ({
         id: item.href,
         label: item.label,
         href: item.href,
         keywords: item.keywords,
-        kind: 'page' as const
+        kind: 'page',
+        meta: undefined
       }))
     ), [navSections]
   );
@@ -126,7 +136,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (!query) return [];
     return routeItems
       .filter((item) => {
-        const haystack = [item.label, ...item.keywords].join(' ').toLowerCase();
+        const haystack = [item.label, ...(item.keywords ?? [])].join(' ').toLowerCase();
         return haystack.includes(query);
       })
       .slice(0, 4);
@@ -331,6 +341,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden md:pl-64">
+        {sessionWarningSeconds !== null && sessionWarningSeconds > 0 && (
+          <div className="fixed bottom-6 right-6 z-50 max-w-sm w-[calc(100%-3rem)] rounded-xl border border-amber-200 bg-amber-50 text-amber-950 shadow-lg p-4 flex flex-col gap-3">
+            <div className="text-sm font-medium">
+              Sesja wygasnie za {formatSessionCountdown(sessionWarningSeconds)}. Zapisz zmiany, aby uniknac utraty danych.
+            </div>
+            <button
+              type="button"
+              onClick={extendSession}
+              className="inline-flex items-center justify-center px-3 py-2 rounded-md border border-amber-300 bg-white text-amber-900 text-xs font-semibold hover:bg-amber-100 transition-colors"
+            >
+              Przedluz sesje
+            </button>
+          </div>
+        )}
         {/* Top Header */}
         <header className="bg-card border-b border-border min-h-16 flex items-center justify-between px-6 lg:px-8 gap-6">
           <div className="min-w-0">
@@ -415,10 +439,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
               )}
             </div>
-            <button className="p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full border-2 border-card"></span>
-            </button>
+            <NotificationsClient />
           </div>
         </header>
 

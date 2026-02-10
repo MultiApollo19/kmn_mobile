@@ -267,7 +267,7 @@ export default function SystemExitsPage() {
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto space-y-6">
-        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden min-h-[500px] flex flex-col">
+        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden min-h-125 flex flex-col">
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
               <Loader2 className="w-8 h-8 text-primary animate-spin" />

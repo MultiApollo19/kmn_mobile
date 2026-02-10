@@ -433,10 +433,10 @@ export default function KioskHomeClient({
   );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px] text-slate-900 font-sans selection:bg-indigo-100">
+    <div className="min-h-screen bg-[#F8FAFC] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] bg-size-[20px_20px] text-slate-900 font-sans selection:bg-indigo-100">
       {/* Top Navigation */}
       <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-400 mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             
             {/* Logo Area */}
@@ -494,7 +494,7 @@ export default function KioskHomeClient({
         </div>
       </nav>
 
-      <main className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="max-w-400 mx-auto p-4 sm:p-6 lg:p-8">
         {showSkeleton ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-pulse">
             <div className="lg:col-span-5 xl:col-span-4 space-y-6">
@@ -641,7 +641,7 @@ export default function KioskHomeClient({
                       <span>Zatwierdź wejście</span>
                     </div>
                     {/* Shine effect */}
-                    <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-10 group-hover:animate-shine" />
+                    <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-linear-to-r from-transparent to-white opacity-10 group-hover:animate-shine" />
                   </button>
 
                 </form>
@@ -783,7 +783,7 @@ export default function KioskHomeClient({
 
       {/* Edit Modal */}
       {editingVisit && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-sm">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h3 className="font-bold text-lg text-slate-900">Edycja wizyty</h3>
