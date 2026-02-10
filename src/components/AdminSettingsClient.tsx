@@ -18,6 +18,13 @@ interface Badge {
   created_at: string;
 }
 
+const BADGE_COLLATOR = new Intl.Collator('pl', { numeric: true, sensitivity: 'base' });
+
+const normalizeBadgeNumber = (value: string) => value.trim();
+
+const compareBadgeNumber = (left: string, right: string) =>
+  BADGE_COLLATOR.compare(normalizeBadgeNumber(left), normalizeBadgeNumber(right));
+
 export default function AdminSettingsClient() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -209,6 +216,10 @@ export default function AdminSettingsClient() {
       </div>
     );
   }
+
+  const sortedBadges = [...badges].sort((a, b) =>
+    compareBadgeNumber(a.badge_number, b.badge_number)
+  );
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 p-6">
@@ -436,7 +447,7 @@ export default function AdminSettingsClient() {
                 <p className="text-muted-foreground text-center py-8">Brak identyfikatorów. Dodaj pierwszy!</p>
               ) : (
                 <div className="space-y-2">
-                  {badges.map((badge) => (
+                  {sortedBadges.map((badge) => (
                     <div key={badge.id} className="flex items-center gap-3 p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors group">
                       <div className="flex-1">
                         <div className="font-medium text-foreground">{badge.badge_number}</div>
