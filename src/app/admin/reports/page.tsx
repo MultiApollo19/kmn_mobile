@@ -6,11 +6,6 @@ import { FileText, AlertTriangle, Clock, ChevronRight } from 'lucide-react';
 export default function ReportsDashboard() {
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Raporty</h1>
-        <p className="text-slate-500 mt-1">Wybierz rodzaj raportu, który chcesz wygenerować.</p>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* History Card */}
         <Link 

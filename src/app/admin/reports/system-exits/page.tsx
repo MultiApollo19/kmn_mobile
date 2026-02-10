@@ -240,11 +240,6 @@ export default function SystemExitsPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] gap-6">
-      <div className="flex items-center gap-2 text-red-600 mb-2">
-        <AlertTriangle className="w-5 h-5" />
-        <h2 className="text-xl font-bold text-slate-900">Wizyty zakończone przez system</h2>
-      </div>
-
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center bg-card p-4 rounded-xl border border-border shadow-sm">
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

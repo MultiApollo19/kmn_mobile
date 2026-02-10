@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
 import { createActorClient } from '@/src/lib/supabaseActor';
 import { useAuth } from '@/src/hooks/useAuth';
@@ -24,6 +25,8 @@ type Employee = {
 
 export default function EmployeesPage() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const searchQuery = useMemo(() => (searchParams.get('search') || '').trim().toLowerCase(), [searchParams]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -187,14 +190,14 @@ export default function EmployeesPage() {
     }
   };
 
+  const filteredEmployees = useMemo(() => {
+    if (!searchQuery) return employees;
+    return employees.filter((emp) => emp.name.toLowerCase().includes(searchQuery));
+  }, [employees, searchQuery]);
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Pracownicy</h1>
-          <p className="text-muted-foreground">Zarządzanie personelem i uprawnieniami</p>
-        </div>
-        
+      <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4">
         <button 
           onClick={() => { setIsAdding(true); setFormData({ name: '', pin: '', department_id: '', role: 'user' }); }}
           className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg transition-colors font-medium shadow-sm"
@@ -209,9 +212,9 @@ export default function EmployeesPage() {
           <div className="p-12 flex justify-center">
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
           </div>
-        ) : employees.length === 0 ? (
+        ) : filteredEmployees.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
-            Brak pracowników. Dodaj pierwszego pracownika.
+            {searchQuery ? `Brak wyników dla "${searchQuery}".` : 'Brak pracowników. Dodaj pierwszego pracownika.'}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -226,7 +229,7 @@ export default function EmployeesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {employees.map((emp) => (
+                {filteredEmployees.map((emp) => (
                   <tr key={emp.id} className="hover:bg-muted/10 transition-colors">
                     <td className="px-6 py-4">
                         <div className="flex items-center gap-3">

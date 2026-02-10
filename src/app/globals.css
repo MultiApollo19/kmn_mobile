@@ -90,6 +90,6 @@
 
 @layer components {
   .admin-page {
-    @apply w-full max-w-none px-4 sm:px-6 lg:px-8 2xl:px-12;
+    @apply w-full max-w-none px-4 sm:px-6 lg:px-8 2xl:px-12 pt-4 lg:pt-6;
   }
 }

@@ -327,7 +327,7 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
                   <FileText className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Szczegoły wizyty</h2>
+                  <h2 className="text-lg font-bold text-slate-900">Szczegóły wizyty</h2>
                 </div>
               </div>
               <button
@@ -347,7 +347,7 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
                   </div>
 
                   <div>
-                    <div className="text-xs text-slate-400 mb-1">Imie i nazwisko</div>
+                    <div className="text-xs text-slate-400 mb-1">Imię i nazwisko</div>
                     <div className="text-xl font-bold text-slate-900 leading-tight">{selectedVisit.visitor_name}</div>
                   </div>
 

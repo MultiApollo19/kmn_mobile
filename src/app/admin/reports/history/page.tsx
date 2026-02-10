@@ -274,7 +274,7 @@ export default function HistoryReportPage() {
 
       autoTable(doc, {
         theme: 'grid',
-        head: [['Lp.', 'Czas przybycia', 'Imię i nazwisko interesanta', 'Cel wizyty', 'Identyfikator', 'Pracownik pzyjmujący', 'Podpis pracownika', 'Czas wyjścia', 'Uwagi']],
+        head: [['Lp.', 'Czas przybycia', 'Imię i nazwisko interesanta', 'Cel wizyty', 'Identyfikator', 'Pracownik przyjmujący', 'Podpis pracownika', 'Czas wyjścia', 'Uwagi']],
         body: tableData,
         startY: 25,
         styles: { fontSize: 8, cellPadding: 2, font: 'Roboto', valign: 'middle', overflow: 'linebreak', lineWidth: 0.1 },
@@ -346,11 +346,6 @@ export default function HistoryReportPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 text-muted-foreground mb-2">
-        <Clock className="w-5 h-5" />
-        <h2 className="text-xl font-bold text-slate-900">Pełna Historia Wizyt</h2>
-      </div>
-
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center bg-card p-4 rounded-xl border border-border shadow-sm">
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
 import { createActorClient } from '@/src/lib/supabaseActor';
 import { useAuth } from '@/src/hooks/useAuth';
@@ -14,6 +15,8 @@ type Department = {
 
 export default function DepartmentsPage() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const searchQuery = useMemo(() => (searchParams.get('search') || '').trim().toLowerCase(), [searchParams]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState<number | null>(null);
@@ -125,14 +128,14 @@ export default function DepartmentsPage() {
     }
   };
 
+  const filteredDepartments = useMemo(() => {
+    if (!searchQuery) return departments;
+    return departments.filter((dept) => dept.name.toLowerCase().includes(searchQuery));
+  }, [departments, searchQuery]);
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Działy</h1>
-          <p className="text-muted-foreground">Zarządzanie strukturą organizacyjną firmy</p>
-        </div>
-        
+      <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4">
         <button 
           onClick={() => { setIsAdding(true); setFormData({ name: '' }); }}
           className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg transition-colors font-medium shadow-sm"
@@ -147,9 +150,9 @@ export default function DepartmentsPage() {
           <div className="p-12 flex justify-center">
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
           </div>
-        ) : departments.length === 0 ? (
+        ) : filteredDepartments.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
-            Brak zdefiniowanych działów. Dodaj pierwszy dział.
+            {searchQuery ? `Brak wyników dla "${searchQuery}".` : 'Brak zdefiniowanych działów. Dodaj pierwszy dział.'}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -161,7 +164,7 @@ export default function DepartmentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {departments.map((dept) => (
+                {filteredDepartments.map((dept) => (
                   <tr key={dept.id} className="hover:bg-muted/10 transition-colors">
                     <td className="px-6 py-4 font-medium flex items-center gap-2">
                         <Building2 className="w-4 h-4 text-muted-foreground" />

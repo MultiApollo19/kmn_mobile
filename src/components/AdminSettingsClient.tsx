@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
 import { createActorClient } from '@/src/lib/supabaseActor';
 import { Loader2, Plus, Trash2, Edit2, Check, X, AlertCircle, Shield, Settings as SettingsIcon, Flag } from 'lucide-react';
@@ -28,6 +29,8 @@ const compareBadgeNumber = (left: string, right: string) =>
 
 export default function AdminSettingsClient() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const searchQuery = useMemo(() => (searchParams.get('search') || '').trim().toLowerCase(), [searchParams]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'general' | 'purposes' | 'identifiers'>('general');
   
@@ -73,6 +76,13 @@ export default function AdminSettingsClient() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'general' || tab === 'purposes' || tab === 'identifiers') {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   // Add Purpose
   const handleAddPurpose = async () => {
@@ -228,17 +238,18 @@ export default function AdminSettingsClient() {
     compareBadgeNumber(a.badge_number, b.badge_number)
   );
 
+  const filteredPurposes = useMemo(() => {
+    if (!searchQuery) return purposes;
+    return purposes.filter((purpose) => purpose.name.toLowerCase().includes(searchQuery));
+  }, [purposes, searchQuery]);
+
+  const filteredBadges = useMemo(() => {
+    if (!searchQuery) return sortedBadges;
+    return sortedBadges.filter((badge) => badge.badge_number.toLowerCase().includes(searchQuery));
+  }, [searchQuery, sortedBadges]);
+
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <SettingsIcon className="w-8 h-8 text-primary" />
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Ustawienia systemu</h1>
-          <p className="text-muted-foreground mt-1">Zarządzaj konfiguracją i ustawieniami aplikacji</p>
-        </div>
-      </div>
-
       {/* Alerts */}
       {error && (
         <div className="bg-destructive/10 border border-destructive text-destructive rounded-lg p-4 flex items-gap gap-3">
@@ -362,11 +373,13 @@ export default function AdminSettingsClient() {
               </div>
 
               {/* Purposes List */}
-              {purposes.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">Brak celów wizyt. Dodaj pierwszy!</p>
+              {filteredPurposes.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">
+                  {searchQuery ? `Brak wyników dla "${searchQuery}".` : 'Brak celów wizyt. Dodaj pierwszy!'}
+                </p>
               ) : (
                 <div className="space-y-2">
-                  {purposes.map((purpose) => (
+                  {filteredPurposes.map((purpose) => (
                     <div key={purpose.id} className="flex items-center gap-3 p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors group">
                       {editingId === purpose.id ? (
                         <>
@@ -450,11 +463,13 @@ export default function AdminSettingsClient() {
               </div>
 
               {/* Badges List */}
-              {badges.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">Brak identyfikatorów. Dodaj pierwszy!</p>
+              {filteredBadges.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">
+                  {searchQuery ? `Brak wyników dla "${searchQuery}".` : 'Brak identyfikatorów. Dodaj pierwszy!'}
+                </p>
               ) : (
                 <div className="space-y-2">
-                  {sortedBadges.map((badge) => (
+                  {filteredBadges.map((badge) => (
                     <div key={badge.id} className="flex items-center gap-3 p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors group">
                       <div className="flex-1">
                         <div className="font-medium text-foreground">{badge.badge_number}</div>

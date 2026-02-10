@@ -200,11 +200,6 @@ export default function AdminLogsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold tracking-tight">Logi zdarzeń</h1>
-        <p className="text-muted-foreground">Przegląd zmian i aktywności w systemie.</p>
-      </div>
-
       <div className="bg-card rounded-xl border border-border shadow-sm p-4 lg:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
           <div className="relative w-full sm:w-80">
@@ -270,7 +265,7 @@ export default function AdminLogsPage() {
             <input
               value={actorName}
               onChange={(e) => setActorName(e.target.value)}
-              placeholder="Imie lub nazwisko"
+              placeholder="Imię lub nazwisko"
               className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
             />
           </div>
@@ -287,7 +282,7 @@ export default function AdminLogsPage() {
             </select>
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase text-muted-foreground">Zasob</label>
+            <label className="text-xs font-semibold uppercase text-muted-foreground">Zasób</label>
             <select
               value={resourceType}
               onChange={(e) => setResourceType(e.target.value)}
@@ -336,7 +331,7 @@ export default function AdminLogsPage() {
           </div>
         ) : logs.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
-            Brak logow dla wybranych filtrow.
+            Brak logów dla wybranych filtrów.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -349,7 +344,7 @@ export default function AdminLogsPage() {
                   <th className="px-4 py-3">Aktor</th>
                   <th className="px-4 py-3">Zasob</th>
                   <th className="px-4 py-3">Akcja</th>
-                  <th className="px-4 py-3">Szczegoly</th>
+                  <th className="px-4 py-3">Szczegóły</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
