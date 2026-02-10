@@ -39,25 +39,25 @@ const friendlyEventNames: Record<string, string> = {
   'auth.login': 'Logowanie',
   'auth.logout': 'Wylogowanie',
   'auth.failed': 'Nieudane logowanie',
-  'auth.expired': 'Wygasniecie sesji',
-  'visit.entry': 'Wejscie wizyty',
-  'visit.exit': 'Wyjscie wizyty',
-  'visit.auto_exit': 'Auto-wyjscie (system)',
+  'auth.expired': 'Wygaśnięcie sesji',
+  'visit.entry': 'Wejście wizyty',
+  'visit.exit': 'Wyjście wizyty',
+  'visit.auto_exit': 'Auto-wyjście (system)',
   'visit.update': 'Aktualizacja wizyty',
-  'visit.delete': 'Usuniecie wizyty',
+  'visit.delete': 'Usunięcie wizyty',
   'admin.employee.create': 'Dodanie pracownika',
   'admin.employee.update': 'Edycja pracownika',
-  'admin.employee.delete': 'Usuniecie pracownika',
+  'admin.employee.delete': 'Usunięcie pracownika',
   'admin.employee.pin_update': 'Zmiana PIN pracownika',
-  'admin.department.create': 'Dodanie dzialu',
-  'admin.department.update': 'Edycja dzialu',
-  'admin.department.delete': 'Usuniecie dzialu',
+  'admin.department.create': 'Dodanie działu',
+  'admin.department.update': 'Edycja działu',
+  'admin.department.delete': 'Usunięcie działu',
   'admin.purpose.create': 'Dodanie celu wizyty',
   'admin.purpose.update': 'Edycja celu wizyty',
-  'admin.purpose.delete': 'Usuniecie celu wizyty',
+  'admin.purpose.delete': 'Usunięcie celu wizyty',
   'admin.badge.create': 'Dodanie identyfikatora',
   'admin.badge.update': 'Edycja identyfikatora',
-  'admin.badge.delete': 'Usuniecie identyfikatora',
+  'admin.badge.delete': 'Usunięcie identyfikatora',
   'admin.badge.toggle': 'Zmiana statusu identyfikatora'
 };
 
@@ -201,8 +201,8 @@ export default function AdminLogsPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold tracking-tight">Logi zdarzen</h1>
-        <p className="text-muted-foreground">Przeglad zmian i aktywnosci w systemie.</p>
+        <h1 className="text-2xl font-bold tracking-tight">Logi zdarzeń</h1>
+        <p className="text-muted-foreground">Przegląd zmian i aktywności w systemie.</p>
       </div>
 
       <div className="bg-card rounded-xl border border-border shadow-sm p-4 lg:p-6 space-y-4">
@@ -220,7 +220,7 @@ export default function AdminLogsPage() {
 
           <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1">
             <div className="flex items-center bg-muted/50 p-1 rounded-lg border border-input">
-              <button onClick={() => setDateRange('today')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${dateRange === 'today' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>Dzis</button>
+              <button onClick={() => setDateRange('today')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${dateRange === 'today' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>Dziś</button>
               <button onClick={() => setDateRange('yesterday')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${dateRange === 'yesterday' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>Wczoraj</button>
               <button onClick={() => setDateRange('week')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${dateRange === 'week' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>7 dni</button>
               <button onClick={() => setShowDateModal(true)} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${dateRange === 'custom' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
@@ -233,7 +233,7 @@ export default function AdminLogsPage() {
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
             >
               <RefreshCw className="h-4 w-4" />
-              Odswiez
+              Odśwież
             </button>
             <button
               onClick={() => setShowFilters((prev) => !prev)}

@@ -133,7 +133,7 @@ export default function DateRangePicker({ value, onChange }: DateRangePickerProp
             type="button"
             onClick={() => setBaseMonth((prev) => addMonths(prev, -1))}
             className="p-2 rounded-md border border-slate-200 hover:bg-slate-50"
-            aria-label="Poprzedni miesiac"
+            aria-label="Poprzedni miesiąc"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -141,7 +141,7 @@ export default function DateRangePicker({ value, onChange }: DateRangePickerProp
             type="button"
             onClick={() => setBaseMonth((prev) => addMonths(prev, 1))}
             className="p-2 rounded-md border border-slate-200 hover:bg-slate-50"
-            aria-label="Nastepny miesiac"
+            aria-label="Następny miesiąc"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
