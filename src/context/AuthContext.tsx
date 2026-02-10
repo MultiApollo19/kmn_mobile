@@ -341,6 +341,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const sessionMs = isAdminPath ? 60 * 60 * 1000 : 60 * 1000;
       const expiresAt = Date.now() + sessionMs;
       localStorage.setItem('kmn_auth', JSON.stringify({ user: userData, expiresAt }));
+      if (logoutTimer.current) window.clearTimeout(logoutTimer.current);
+      logoutTimer.current = window.setTimeout(() => {
+        (async () => {
+          await supabase.auth.signOut().catch(() => {});
+          localStorage.removeItem('kmn_auth');
+          setUser(null);
+          try { router.push('/login'); } catch {}
+        })();
+      }, sessionMs);
       scheduleLogout(sessionMs);
       
       // 5. Log the login

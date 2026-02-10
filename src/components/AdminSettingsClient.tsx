@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/src/lib/supabase';
+import { createActorClient } from '@/src/lib/supabaseActor';
 import { Loader2, Plus, Trash2, Edit2, Check, X, AlertCircle, Shield, Settings as SettingsIcon, Flag } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useAuth } from '@/src/hooks/useAuth';
@@ -78,7 +79,8 @@ export default function AdminSettingsClient() {
     if (!newPurpose.trim()) return;
     
     try {
-      const { data, error } = await supabase
+      const actorClient = createActorClient(user);
+      const { data, error } = await actorClient
         .from('visit_purposes')
         .insert([{ name: newPurpose.trim() }])
         .select()
@@ -102,7 +104,8 @@ export default function AdminSettingsClient() {
     
     setSavingId(id);
     try {
-      const { error } = await supabase
+      const actorClient = createActorClient(user);
+      const { error } = await actorClient
         .from('visit_purposes')
         .update({ name: editingName.trim() })
         .eq('id', id);
@@ -127,7 +130,8 @@ export default function AdminSettingsClient() {
     if (!confirm('Na pewno chcesz usunąć ten cel wizyty?')) return;
     
     try {
-      const { error } = await supabase
+      const actorClient = createActorClient(user);
+      const { error } = await actorClient
         .from('visit_purposes')
         .delete()
         .eq('id', id);
@@ -149,7 +153,8 @@ export default function AdminSettingsClient() {
     
     setAddingBadge(true);
     try {
-      const { data, error } = await supabase
+      const actorClient = createActorClient(user);
+      const { data, error } = await actorClient
         .from('badges')
         .insert([{ badge_number: newBadgeNumber.trim() }])
         .select()
@@ -172,7 +177,8 @@ export default function AdminSettingsClient() {
   // Toggle Badge
   const handleToggleBadge = async (id: number, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
+      const actorClient = createActorClient(user);
+      const { error } = await actorClient
         .from('badges')
         .update({ is_active: !currentStatus })
         .eq('id', id);
@@ -193,7 +199,8 @@ export default function AdminSettingsClient() {
     if (!confirm('Na pewno chcesz usunąć ten identyfikator?')) return;
     
     try {
-      const { error } = await supabase
+      const actorClient = createActorClient(user);
+      const { error } = await actorClient
         .from('badges')
         .delete()
         .eq('id', id);

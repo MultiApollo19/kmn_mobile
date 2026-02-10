@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useAuth } from '@/src/hooks/useAuth';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Users, FileText, Settings, Bell, Search, LogOut, Loader2, Building2 } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, Bell, Search, LogOut, Loader2, Building2, ClipboardList } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/src/lib/utils';
 
@@ -55,6 +55,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <NavItem href="/admin" icon={<LayoutDashboard size={20} />} label="Pulpit" active={pathname === '/admin'} />
           <NavItem href="/admin/employees" icon={<Users size={20} />} label="Pracownicy" active={pathname?.startsWith('/admin/employees')} />
           <NavItem href="/admin/departments" icon={<Building2 size={20} />} label="Działy" active={pathname?.startsWith('/admin/departments')} />
+          <NavItem href="/admin/logs" icon={<ClipboardList size={20} />} label="Logi" active={pathname?.startsWith('/admin/logs')} />
           <NavItem href="/admin/reports" icon={<FileText size={20} />} label="Raportowanie" active={pathname?.startsWith('/admin/reports')} />
           
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-8 mb-2 px-2">System</div>
@@ -89,6 +90,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <h2 className="text-lg font-semibold text-foreground">
             {pathname === '/admin' ? 'Pulpit nawigacyjny' : 
              pathname?.includes('visitors') ? 'Lista interesantów' :
+             pathname?.includes('logs') ? 'Logi systemu' :
              pathname?.includes('reports') ? 'Raporty' :
              pathname?.includes('settings') ? 'Ustawienia' : 'Panel'}
           </h2>
