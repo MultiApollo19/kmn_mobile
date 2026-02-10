@@ -2,14 +2,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/src/lib/supabase';
-import { Loader2, Clock } from 'lucide-react';
+import { Loader2, Clock, FileText, X, User, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { cn } from '@/src/lib/utils';
+import Image from 'next/image';
 
 export type Visit = {
   id: number;
   entry_time: string;
+  exit_time: string | null;
   visitor_name: string;
   notes: string;
   employees: {
@@ -46,6 +48,9 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
   const [stats, setStats] = useState<DashboardStats>(initialData.stats);
   const [loading, setLoading] = useState(initialData.visits.length === 0);
   const showSkeleton = loading && visits.length === 0;
+  const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
+  const [visitSignature, setVisitSignature] = useState<string | null>(null);
+  const [loadingSignature, setLoadingSignature] = useState(false);
 
   // Refresh function (still needed for manual refresh)
   const fetchDashboardData = useCallback(async () => {
@@ -57,6 +62,7 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
         .select(`
           id,
           entry_time,
+          exit_time,
           visitor_name,
           notes,
           employees:employees!visits_employee_id_fkey (
@@ -157,6 +163,34 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
     fetchDashboardData();
   }, [fetchDashboardData]);
 
+  useEffect(() => {
+    if (!selectedVisit) {
+      setVisitSignature(null);
+      return;
+    }
+
+    const fetchSignature = async () => {
+      setLoadingSignature(true);
+      try {
+        const { data, error } = await supabase
+          .from('visits')
+          .select('signature')
+          .eq('id', selectedVisit.id)
+          .single();
+
+        if (error) throw error;
+        setVisitSignature(data.signature ?? null);
+      } catch (err) {
+        console.error('Error fetching signature:', err);
+        setVisitSignature(null);
+      } finally {
+        setLoadingSignature(false);
+      }
+    };
+
+    fetchSignature();
+  }, [selectedVisit]);
+
   return (
     <div className="max-w-7xl mx-auto space-y-8 p-6">
       {/* Stats Grid */}
@@ -227,7 +261,11 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
               </thead>
               <tbody className="divide-y divide-border">
                 {visits.map((visit) => (
-                  <tr key={visit.id} className="hover:bg-muted/10 transition-colors group">
+                  <tr
+                    key={visit.id}
+                    onClick={() => setSelectedVisit(visit)}
+                    className="hover:bg-muted/10 transition-colors group cursor-pointer"
+                  >
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex flex-col">
                         <span className="text-lg font-bold text-foreground">
@@ -279,6 +317,137 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
           </div>
         )}
       </div>
+
+      {selectedVisit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-slate-200">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div className="flex items-center gap-4">
+                <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Szczegoły wizyty</h2>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedVisit(null)}
+                className="p-2 hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 bg-white">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 border border-slate-100 rounded-xl overflow-hidden">
+                <div className="p-6 space-y-6 bg-slate-50/30">
+                  <div className="flex items-center gap-2 mb-4">
+                    <User className="w-4 h-4 text-indigo-500" />
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Interesant</h3>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-slate-400 mb-1">Imie i nazwisko</div>
+                    <div className="text-xl font-bold text-slate-900 leading-tight">{selectedVisit.visitor_name}</div>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <div className="text-xs text-slate-400 mb-1">Cel wizyty</div>
+                      <div className="inline-flex items-center px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-sm font-medium border border-indigo-100">
+                        {selectedVisit.visit_purposes?.name}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-slate-400 mb-1">Identyfikator</div>
+                      <div className="text-lg font-mono font-bold text-slate-700 bg-white border border-slate-200 px-3 py-0.5 rounded shadow-sm">
+                        {selectedVisit.badges?.badge_number}
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedVisit.notes ? (
+                    <div className="pt-2">
+                      <div className="text-xs text-slate-400 mb-1">Uwagi / Firma</div>
+                      <div className="p-3 bg-amber-50/50 border border-amber-100/50 rounded-lg text-sm text-amber-900 italic">
+                        &quot;{selectedVisit.notes}&quot;
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="p-6 space-y-6 bg-white">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Clock className="w-4 h-4 text-indigo-500" />
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Czas i status</h3>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <div className="text-xs text-slate-400 mb-1">Wejście</div>
+                      <div className="text-2xl font-bold text-slate-900">{format(new Date(selectedVisit.entry_time), 'HH:mm')}</div>
+                      <div className="text-xs text-slate-500">{format(new Date(selectedVisit.entry_time), 'dd.MM.yyyy')}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-slate-400 mb-1">Wyjście</div>
+                      {selectedVisit.exit_time ? (
+                        <>
+                          <div className="text-2xl font-bold text-slate-900">{format(new Date(selectedVisit.exit_time), 'HH:mm')}</div>
+                          <div className="text-xs text-slate-500">{format(new Date(selectedVisit.exit_time), 'dd.MM.yyyy')}</div>
+                        </>
+                      ) : (
+                        <span className="text-lg text-emerald-600 font-medium italic">W trakcie</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100">
+                    <div className="text-xs text-slate-400 mb-1">Całkowity czas</div>
+                    <div className="text-lg font-medium text-slate-700">
+                      {selectedVisit.exit_time
+                        ? `${Math.floor((new Date(selectedVisit.exit_time).getTime() - new Date(selectedVisit.entry_time).getTime()) / 60000)} min`
+                        : '-'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 space-y-6 bg-slate-50/30">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Building2 className="w-4 h-4 text-indigo-500" />
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Pracownik</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex gap-3 items-start">
+                      <div className="mt-1 p-1.5 bg-emerald-100 text-emerald-600 rounded-md">
+                        <User className="w-3 h-3" />
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-400">Wpuszczajacy</div>
+                        <div className="font-semibold text-slate-900 text-sm">{selectedVisit.employees?.name}</div>
+                        <div className="text-xs text-slate-500">{selectedVisit.employees?.departments?.name}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-200/50">
+                    <div className="text-xs text-slate-400 mb-2">Podpis pracownika</div>
+                    <div className="h-24 w-full bg-white rounded border border-slate-200 flex items-center justify-center relative overflow-hidden">
+                      {loadingSignature ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-slate-300" />
+                      ) : visitSignature ? (
+                        <Image src={visitSignature} alt="Podpis" fill className="object-contain p-2" />
+                      ) : (
+                        <span className="text-xs text-slate-300 italic">Brak</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

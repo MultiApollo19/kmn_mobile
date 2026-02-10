@@ -150,7 +150,6 @@ export default function DepartmentsPage() {
             <table className="w-full text-sm text-left">
               <thead className="bg-muted/30 text-muted-foreground font-semibold border-b border-border">
                 <tr>
-                  <th className="px-6 py-4 w-16">ID</th>
                   <th className="px-6 py-4">Nazwa</th>
                   <th className="px-6 py-4 text-right">Akcje</th>
                 </tr>
@@ -158,7 +157,6 @@ export default function DepartmentsPage() {
               <tbody className="divide-y divide-border">
                 {departments.map((dept) => (
                   <tr key={dept.id} className="hover:bg-muted/10 transition-colors">
-                    <td className="px-6 py-4 text-muted-foreground font-mono">{dept.id}</td>
                     <td className="px-6 py-4 font-medium flex items-center gap-2">
                         <Building2 className="w-4 h-4 text-muted-foreground" />
                         {dept.name}

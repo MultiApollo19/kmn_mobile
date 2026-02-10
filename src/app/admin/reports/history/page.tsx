@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import Image from 'next/image';
+import DateRangePicker from '@/src/components/DateRangePicker';
 
 type VisitSummary = {
   id: number;
@@ -338,6 +339,11 @@ export default function HistoryReportPage() {
     }
   };
 
+  const handleRangeChange = (next: { start: Date | null; end: Date | null }) => {
+    setCustomStart(next.start ? format(next.start, 'yyyy-MM-dd') : '');
+    setCustomEnd(next.end ? format(next.end, 'yyyy-MM-dd') : '');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 text-muted-foreground mb-2">
@@ -446,14 +452,19 @@ export default function HistoryReportPage() {
 
       {showDateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl">
             <h3 className="font-semibold mb-4">Wybierz zakres</h3>
             <form onSubmit={handleCustomRangeSubmit} className="space-y-4">
-              <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="w-full border p-2 rounded" required />
-              <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="w-full border p-2 rounded" required />
+              <DateRangePicker
+                value={{
+                  start: customStart ? new Date(customStart) : null,
+                  end: customEnd ? new Date(customEnd) : null
+                }}
+                onChange={handleRangeChange}
+              />
               <div className="flex gap-2 justify-end">
                 <button type="button" onClick={() => setShowDateModal(false)} className="px-4 py-2 border rounded">Anuluj</button>
-                <button type="submit" className="px-4 py-2 bg-primary text-white rounded">Zastosuj</button>
+                <button type="submit" disabled={!customStart || !customEnd} className="px-4 py-2 bg-primary text-white rounded disabled:opacity-60">Zastosuj</button>
               </div>
             </form>
           </div>

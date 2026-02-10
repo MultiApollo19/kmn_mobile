@@ -27,6 +27,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const logoutTimer = useRef<number | null>(null);
+  const activityHandlerRef = useRef<(() => void) | null>(null);
+
+  const clearLogoutTimer = () => {
+    if (logoutTimer.current) {
+      window.clearTimeout(logoutTimer.current);
+      logoutTimer.current = null;
+    }
+  };
+
+  const performLogout = async () => {
+    await supabase.auth.signOut().catch(() => {});
+    localStorage.removeItem('kmn_auth');
+    setUser(null);
+    try { router.push('/login'); } catch {}
+  };
+
+  const scheduleLogout = (ms: number) => {
+    clearLogoutTimer();
+    logoutTimer.current = window.setTimeout(() => {
+      void performLogout();
+    }, ms);
+  };
+
+  const isAdminRoute = () => {
+    if (typeof window === 'undefined') return false;
+    return window.location.pathname.startsWith('/admin');
+  };
+
+  const setupInactivityTracking = (idleMs: number) => {
+    const refreshExpiry = () => {
+      const stored = localStorage.getItem('kmn_auth');
+      if (!stored) return;
+      try {
+        const parsed = JSON.parse(stored) as { user: UserType; expiresAt?: number } | UserType;
+        if (parsed && typeof parsed === 'object' && 'user' in parsed) {
+          const nextExpiresAt = Date.now() + idleMs;
+          localStorage.setItem('kmn_auth', JSON.stringify({ user: parsed.user, expiresAt: nextExpiresAt }));
+          scheduleLogout(idleMs);
+        }
+      } catch {
+        // Ignore invalid storage
+      }
+    };
+
+    const handler = () => refreshExpiry();
+    activityHandlerRef.current = handler;
+
+    window.addEventListener('mousemove', handler, { passive: true });
+    window.addEventListener('mousedown', handler, { passive: true });
+    window.addEventListener('keydown', handler);
+    window.addEventListener('touchstart', handler, { passive: true });
+    window.addEventListener('scroll', handler, { passive: true });
+  };
+
+  const teardownInactivityTracking = () => {
+    const handler = activityHandlerRef.current;
+    if (!handler) return;
+    window.removeEventListener('mousemove', handler);
+    window.removeEventListener('mousedown', handler);
+    window.removeEventListener('keydown', handler);
+    window.removeEventListener('touchstart', handler);
+    window.removeEventListener('scroll', handler);
+    activityHandlerRef.current = null;
+  };
 
   // Restore session from localStorage or Supabase session
   useEffect(() => {
@@ -54,15 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   setUser(p.user);
                   const ms = p.expiresAt - Date.now();
                   if (ms > 0) {
-                    if (logoutTimer.current) window.clearTimeout(logoutTimer.current);
-                    logoutTimer.current = window.setTimeout(() => {
-                      (async () => {
-                        await supabase.auth.signOut().catch(() => {});
-                        localStorage.removeItem('kmn_auth');
-                        setUser(null);
-                        try { router.push('/login'); } catch {}
-                      })();
-                    }, ms);
+                    scheduleLogout(ms);
                   }
                 }
               } else {
@@ -96,6 +152,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, [router]);
+
+  useEffect(() => {
+    if (!user) {
+      teardownInactivityTracking();
+      clearLogoutTimer();
+      return;
+    }
+
+    const idleMs = 60 * 1000;
+    if (isAdminRoute()) {
+      teardownInactivityTracking();
+      return;
+    }
+
+    setupInactivityTracking(idleMs);
+    scheduleLogout(idleMs);
+
+    return () => {
+      teardownInactivityTracking();
+    };
+  }, [user]);
 
   const loginWithPin = async (pin: string, redirectPath: string = '/') => {
     // 1. Verify PIN via RPC (Secure Lookup)
@@ -141,15 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const sessionMs = isAdminPath ? 60 * 60 * 1000 : 60 * 1000;
       const expiresAt = Date.now() + sessionMs;
       localStorage.setItem('kmn_auth', JSON.stringify({ user: userData, expiresAt }));
-      if (logoutTimer.current) window.clearTimeout(logoutTimer.current);
-      logoutTimer.current = window.setTimeout(() => {
-        (async () => {
-          await supabase.auth.signOut().catch(() => {});
-          localStorage.removeItem('kmn_auth');
-          setUser(null);
-          try { router.push('/login'); } catch {}
-        })();
-      }, sessionMs);
+      scheduleLogout(sessionMs);
       
       // 5. Log the login
       // Note: This might fail if RLS requires auth.uid(). 
@@ -176,13 +245,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    teardownInactivityTracking();
+    clearLogoutTimer();
+    await supabase.auth.signOut().catch(() => {});
     localStorage.removeItem('kmn_auth');
     setUser(null);
-    if (logoutTimer.current) {
-      window.clearTimeout(logoutTimer.current);
-      logoutTimer.current = null;
-    }
     router.push('/login');
   };
 
