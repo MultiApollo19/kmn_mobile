@@ -206,10 +206,10 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard title="Obecnie w firmie" value={stats.active.toString()} change="Teraz" neutral />
-          <StatCard title="Dzisiejsze wizyty" value={stats.todayVisits.toString()} change="Dzisiaj" neutral />
-          <StatCard title="Średni czas wizyty (dziś)" value={stats.todayAvgTime} change="Średnia" neutral />
-          <StatCard title="Średni czas wizyty (ogółem)" value={stats.totalAvgTime} change="Średnia" neutral />
+          <StatCard title="Obecnie w firmie" value={stats.active.toString()} change="" neutral />
+          <StatCard title="Dzisiejsze wizyty" value={stats.todayVisits.toString()} change="" neutral />
+          <StatCard title="Średni czas wizyty (dziś)" value={stats.todayAvgTime} change="" neutral />
+          <StatCard title="Średni czas wizyty (ogółem)" value={stats.totalAvgTime} change="" neutral />
         </div>
       )}
 

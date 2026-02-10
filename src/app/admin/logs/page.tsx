@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, RefreshCw, CalendarRange, Search, SlidersHorizontal } from 'lucide-react';
-import { startOfDay, endOfDay, subDays } from 'date-fns';
+import { endOfDay, format, startOfDay, subDays } from 'date-fns';
 import { cn } from '@/src/lib/utils';
 import { createActorClient } from '@/src/lib/supabaseActor';
 import { useAuth } from '@/src/hooks/useAuth';
+import DateRangePicker from '@/src/components/DateRangePicker';
 
 type EventLog = {
   id: number;
@@ -28,7 +29,7 @@ const resourceOptions = ['visit', 'employee', 'department', 'purpose', 'badge'];
 const categoryOptions = [
   { value: '', label: 'Wszystkie' },
   { value: 'auth', label: 'Autoryzacja' },
-  { value: 'visit', label: 'Wizyty' },
+  { value: 'visit', label: 'Interesanci' },
   { value: 'admin', label: 'Panel admina' },
   { value: 'system', label: 'System' },
   { value: 'other', label: 'Inne' }
@@ -40,8 +41,8 @@ const friendlyEventNames: Record<string, string> = {
   'auth.logout': 'Wylogowanie',
   'auth.failed': 'Nieudane logowanie',
   'auth.expired': 'Wygaśnięcie sesji',
-  'visit.entry': 'Wejście wizyty',
-  'visit.exit': 'Wyjście wizyty',
+  'visit.entry': 'Wejście interesanta',
+  'visit.exit': 'Wyjście interesanta',
   'visit.auto_exit': 'Auto-wyjście (system)',
   'visit.update': 'Aktualizacja wizyty',
   'visit.delete': 'Usunięcie wizyty',
@@ -83,6 +84,21 @@ function getCategoryBadge(category: string) {
       return 'bg-indigo-100 text-indigo-700';
     case 'system':
       return 'bg-rose-100 text-rose-700';
+    default:
+      return 'bg-muted text-muted-foreground';
+  }
+}
+
+function getLevelBadge(level: string) {
+  switch (level) {
+    case 'error':
+      return 'bg-rose-100 text-rose-700';
+    case 'warn':
+      return 'bg-amber-100 text-amber-700';
+    case 'info':
+      return 'bg-blue-100 text-blue-700';
+    case 'audit':
+      return 'bg-emerald-100 text-emerald-700';
     default:
       return 'bg-muted text-muted-foreground';
   }
@@ -197,6 +213,11 @@ export default function AdminLogsPage() {
       setDateRange('custom');
       setShowDateModal(false);
     }
+  };
+
+  const handleRangeChange = (next: { start: Date | null; end: Date | null }) => {
+    setCustomStart(next.start ? format(next.start, 'yyyy-MM-dd') : '');
+    setCustomEnd(next.end ? format(next.end, 'yyyy-MM-dd') : '');
   };
 
   return (
@@ -371,10 +392,7 @@ export default function AdminLogsPage() {
                     <td className="px-4 py-3">
                       <span className={cn(
                         'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold',
-                        log.level === 'error' ? 'bg-rose-100 text-rose-700' :
-                        log.level === 'warn' ? 'bg-amber-100 text-amber-700' :
-                        log.level === 'audit' ? 'bg-blue-100 text-blue-700' :
-                        'bg-muted text-muted-foreground'
+                        getLevelBadge(log.level)
                       )}>
                         {log.level}
                       </span>
@@ -415,31 +433,20 @@ export default function AdminLogsPage() {
       </div>
 
       {showDateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-sm w-full p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl">
             <h3 className="font-semibold mb-4">Wybierz zakres</h3>
             <form onSubmit={handleCustomRangeSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Data początkowa</label>
-                <input
-                  type="date"
-                  value={customStart}
-                  onChange={(e) => setCustomStart(e.target.value)}
-                  className="w-full border rounded px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Data koncowa</label>
-                <input
-                  type="date"
-                  value={customEnd}
-                  onChange={(e) => setCustomEnd(e.target.value)}
-                  className="w-full border rounded px-3 py-2"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
+              <DateRangePicker
+                value={{
+                  start: customStart ? new Date(customStart) : null,
+                  end: customEnd ? new Date(customEnd) : null
+                }}
+                onChange={handleRangeChange}
+              />
+              <div className="flex gap-2 justify-end">
                 <button type="button" onClick={() => setShowDateModal(false)} className="px-4 py-2 border rounded">Anuluj</button>
-                <button type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded">Zastosuj</button>
+                <button type="submit" disabled={!customStart || !customEnd} className="px-4 py-2 bg-primary text-white rounded disabled:opacity-60">Zastosuj</button>
               </div>
             </form>
           </div>
