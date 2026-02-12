@@ -11,12 +11,18 @@ export default function ScreenSizeWarning() {
   const computeInvalid = useCallback(() => {
     if (typeof window === 'undefined') return false;
     if (pathname?.startsWith('/admin')) return false;
+
     const width = window.innerWidth;
     const height = window.innerHeight;
     const ratio = width / height;
     const hasTouch = navigator.maxTouchPoints > 0;
     const isDesktopSize = width > 1024 && ratio > 1.45;
-    return !hasTouch || isDesktopSize;
+
+    // Exclude Samsung Galaxy Tab A11+ in landscape mode
+    const isGalaxyTabA11Landscape =
+      width === 1600 && height === 2560 && ratio < 1;
+
+    return !hasTouch || (isDesktopSize && !isGalaxyTabA11Landscape);
   }, [pathname]);
 
   const [isInvalid, setIsInvalid] = useState<boolean>(false);

@@ -86,12 +86,12 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
       
       const todayStatsQuery = supabase
-        .from('visits')
-        .select('id, entry_time, exit_time')
+        .from('visit_history')
+        .select('visit_id, entry_time, exit_time')
         .gte('entry_time', startOfDay);
 
       const totalStatsQuery = supabase
-        .from('visits')
+        .from('visit_history')
         .select('entry_time, exit_time')
         .not('exit_time', 'is', null);
 

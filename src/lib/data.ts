@@ -79,12 +79,12 @@ export const getAdminDashboardData = async () => {
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
     
     const todayStatsQuery = supabase
-      .from('visits')
-      .select('id, entry_time, exit_time')
+      .from('visit_history')
+      .select('visit_id, entry_time, exit_time')
       .gte('entry_time', startOfDay);
 
     const totalStatsQuery = supabase
-      .from('visits') // We keep total stats on visits table for performance, knowing it might miss deleted ones
+      .from('visit_history')
       .select('entry_time, exit_time')
       .not('exit_time', 'is', null);
 
