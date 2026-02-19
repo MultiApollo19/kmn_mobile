@@ -93,6 +93,31 @@
     @apply w-full max-w-none px-4 sm:px-6 lg:px-8 2xl:px-12 pt-4 lg:pt-6;
   }
 
+  .kiosk-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(148 163 184) rgb(241 245 249);
+    scrollbar-gutter: stable;
+  }
+
+  .kiosk-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .kiosk-scrollbar::-webkit-scrollbar-track {
+    background: rgb(241 245 249);
+    border-radius: 9999px;
+  }
+
+  .kiosk-scrollbar::-webkit-scrollbar-thumb {
+    background: rgb(148 163 184);
+    border-radius: 9999px;
+    border: 2px solid rgb(241 245 249);
+  }
+
+  .kiosk-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgb(100 116 139);
+  }
+
   .kiosk-1280 .text-xs { font-size: 0.85rem; }
   .kiosk-1280 .text-sm { font-size: 0.95rem; }
   .kiosk-1280 .text-base { font-size: 1.05rem; }
