@@ -140,7 +140,7 @@ const SignaturePad = ({ onEnd, disabled }: { onEnd: (dataUrl: string) => void, d
       <canvas
         ref={canvasRef}
         width={500}
-        height={160}
+        height={120}
         className="relative z-10 w-full touch-none rounded-xl cursor-crosshair active:cursor-crosshair bg-transparent"
         onMouseDown={startDrawing}
         onMouseMove={draw}
@@ -196,7 +196,6 @@ export default function KioskHomeClient({
   const [signature, setSignature] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
-  const [isGalaxyTabA11Landscape, setIsGalaxyTabA11Landscape] = useState(false);
 
   // Edit Modal State
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
@@ -212,17 +211,6 @@ export default function KioskHomeClient({
     setCurrentTime(new Date());
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const updateViewport = () => {
-      if (typeof window === 'undefined') return;
-      setIsGalaxyTabA11Landscape(window.innerWidth === 1280 && window.innerHeight === 800);
-    };
-
-    updateViewport();
-    window.addEventListener('resize', updateViewport);
-    return () => window.removeEventListener('resize', updateViewport);
   }, []);
 
   // Auth check
@@ -445,15 +433,15 @@ export default function KioskHomeClient({
   );
 
   return (
-    <div className={`min-h-screen bg-[#F8FAFC] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] bg-size-[20px_20px] text-slate-900 font-sans selection:bg-indigo-100${isGalaxyTabA11Landscape ? ' kiosk-1280' : ''}`}>
+    <div className="h-screen overflow-hidden bg-[#F8FAFC] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] bg-size-[20px_20px] text-slate-900 font-sans selection:bg-indigo-100">
       {/* Top Navigation */}
-      <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
+      <nav className="w-full bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
         <div className="max-w-400 mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
+          <div className="flex h-14 items-center justify-between">
             
             {/* Logo Area */}
             <div className="flex items-center gap-3">
-              <div className="relative h-30 w-30 overflow-hidden rounded-xl">
+              <div className="relative h-12 w-24 overflow-hidden rounded-xl">
                  <Image 
                   src="/Logo.png" 
                   alt="Company Logo" 
@@ -468,9 +456,9 @@ export default function KioskHomeClient({
             </div>
 
             {/* Right Side Info */}
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4">
               {/* Time Display */}
-              <div className="hidden lg:flex flex-col items-end border-r border-slate-200 pr-6">
+              <div className="hidden lg:flex flex-col items-end border-r border-slate-200 pr-4">
                 <span className="text-sm font-bold text-slate-900 tabular-nums">
                   {currentTime?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
@@ -481,7 +469,7 @@ export default function KioskHomeClient({
               </div>
 
               {/* User Profile */}
-              <div className="flex items-center gap-3 pl-2">
+              <div className="flex items-center gap-2 pl-1">
                 <div className="text-right hidden sm:block">
                   <p className="text-sm font-bold text-slate-900">{user.name}</p>
                   <div className="flex items-center justify-end gap-1.5">
@@ -490,16 +478,15 @@ export default function KioskHomeClient({
                     </span>
                   </div>
                 </div>
-                <div className="h-10 w-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-bold shadow-inner">
+                <div className="h-9 w-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-bold shadow-inner">
                   {user.name.charAt(0)}
                 </div>
                 <button 
                   onClick={logout}
-                  className="ml-2 flex items-center gap-2 p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200"
+                  className="ml-1 p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200"
                   title="Wyloguj się"
                 >
                   <LogOut className="w-5 h-5" />
-                  <span className="text-sm font-semibold">Wyloguj</span>
                 </button>
               </div>
             </div>
@@ -507,24 +494,24 @@ export default function KioskHomeClient({
         </div>
       </nav>
 
-      <main className="max-w-400 mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="max-w-400 mx-auto h-[calc(100vh-3.5rem)] p-3 sm:p-4 lg:p-5 overflow-hidden">
         {showSkeleton ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-pulse">
-            <div className="lg:col-span-5 xl:col-span-4 space-y-6">
-              <div className="bg-white rounded-3xl border border-slate-100 p-6 space-y-4">
+          <div className="grid h-full grid-cols-1 lg:grid-cols-12 gap-4 items-stretch animate-pulse">
+            <div className="lg:col-span-6 xl:col-span-5 space-y-4">
+              <div className="bg-white rounded-2xl border border-slate-100 p-4 space-y-3">
                 <div className="h-5 w-40 bg-slate-200 rounded" />
                 <div className="h-4 w-56 bg-slate-200 rounded" />
                 <div className="h-12 w-full bg-slate-200 rounded-xl" />
                 <div className="h-12 w-full bg-slate-200 rounded-xl" />
                 <div className="h-12 w-full bg-slate-200 rounded-xl" />
               </div>
-              <div className="bg-white rounded-3xl border border-slate-100 p-6 space-y-4">
+              <div className="bg-white rounded-2xl border border-slate-100 p-4 space-y-3">
                 <div className="h-5 w-32 bg-slate-200 rounded" />
-                <div className="h-32 w-full bg-slate-200 rounded-xl" />
+                <div className="h-24 w-full bg-slate-200 rounded-xl" />
               </div>
             </div>
-            <div className="lg:col-span-7 xl:col-span-8 space-y-6">
-              <div className="bg-white rounded-3xl border border-slate-100 p-6 space-y-4">
+            <div className="lg:col-span-6 xl:col-span-7 h-full">
+              <div className="bg-white rounded-2xl border border-slate-100 p-4 space-y-3 h-full">
                 <div className="h-5 w-48 bg-slate-200 rounded" />
                 {[0, 1, 2, 3, 4].map((i) => (
                   <div key={i} className="h-10 w-full bg-slate-200 rounded" />
@@ -533,23 +520,23 @@ export default function KioskHomeClient({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="grid h-full grid-cols-1 lg:grid-cols-12 gap-4 items-stretch overflow-hidden">
           
           {/* --- LEFT COLUMN: Admission Form --- */}
-          <div className="lg:col-span-5 xl:col-span-4 space-y-6">
-            <div className="bg-white rounded-3xl shadow-[0_2px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-100 overflow-hidden">
-              <div className="bg-slate-50/50 border-b border-slate-100 p-6 flex items-center gap-3">
+          <div className="lg:col-span-6 xl:col-span-5 h-full min-h-0">
+            <div className="bg-white rounded-2xl shadow-[0_2px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-100 overflow-hidden h-full flex flex-col">
+              <div className="bg-slate-50/50 border-b border-slate-100 px-4 py-3 flex items-center gap-3">
                 <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-                  <PenTool className="w-5 h-5" />
+                  <PenTool className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Nowa Wizyta</h2>
-                  <p className="text-sm text-slate-500">Wprowadź dane gościa</p>
+                  <h2 className="text-base font-bold text-slate-900">Nowa Wizyta</h2>
+                  <p className="text-xs text-slate-500">Wprowadź dane gościa</p>
                 </div>
               </div>
 
-              <div className="p-6">
-                <form onSubmit={handleAdmission} className="space-y-5">
+              <div className="p-4 flex-1 min-h-0 overflow-y-auto">
+                <form onSubmit={handleAdmission} className="space-y-4">
                   
                   {/* Visitor Name */}
                   <div className="space-y-2">
@@ -557,12 +544,12 @@ export default function KioskHomeClient({
                       Kogo wpuszczamy? <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                      <User className="absolute left-3.5 top-3.5 w-5 h-5 text-slate-400" />
+                      <User className="absolute left-3.5 top-3 w-5 h-5 text-slate-400" />
                       <input 
                         type="text" 
                         value={visitorName}
                         onChange={e => setVisitorName(e.target.value)}
-                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-medium"
+                        className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-medium"
                         placeholder="Imię i nazwisko interesanta"
                         required
                       />
@@ -579,7 +566,7 @@ export default function KioskHomeClient({
                         <select 
                           value={selectedPurpose}
                           onChange={e => setSelectedPurpose(e.target.value)}
-                          className="w-full pl-3 pr-8 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all appearance-none font-medium cursor-pointer"
+                          className="w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all appearance-none font-medium cursor-pointer"
                           required
                         >
                           <option value="" disabled>Wybierz...</option>
@@ -587,7 +574,7 @@ export default function KioskHomeClient({
                             <option key={p.id} value={p.name}>{p.name}</option>
                           ))}
                         </select>
-                        <div className="absolute right-3 top-3.5 pointer-events-none text-slate-400">
+                        <div className="absolute right-3 top-3 pointer-events-none text-slate-400">
                           <ChevronRight className="w-4 h-4 rotate-90" />
                         </div>
                       </div>
@@ -601,7 +588,7 @@ export default function KioskHomeClient({
                         <select 
                           value={selectedBadge}
                           onChange={e => setSelectedBadge(e.target.value)}
-                          className="w-full pl-3 pr-8 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all appearance-none font-medium cursor-pointer"
+                          className="w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all appearance-none font-medium cursor-pointer"
                           required
                         >
                           <option value="" disabled>Wybierz...</option>
@@ -609,7 +596,7 @@ export default function KioskHomeClient({
                             <option key={b.id} value={b.badge_number}>{b.badge_number}</option>
                           ))}
                         </select>
-                         <div className="absolute right-3 top-3.5 pointer-events-none text-slate-400">
+                         <div className="absolute right-3 top-3 pointer-events-none text-slate-400">
                           <ChevronRight className="w-4 h-4 rotate-90" />
                         </div>
                       </div>
@@ -625,7 +612,7 @@ export default function KioskHomeClient({
                       rows={2}
                       value={notes}
                       onChange={e => setNotes(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none font-medium"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none font-medium"
                       placeholder="Np. Firma, nr. legitymacji, opis..."
                     />
                   </div>
@@ -647,7 +634,7 @@ export default function KioskHomeClient({
                   <button 
                     type="submit" 
                     disabled={submitting || !visitorName || !selectedPurpose || !selectedBadge || !signature || (selectedPurpose === 'Inne' && notes.trim().length < 3)}
-                    className="group relative w-full py-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl shadow-xl shadow-slate-900/10 transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none overflow-hidden"
+                    className="group relative w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-xl shadow-slate-900/10 transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none overflow-hidden"
                   >
                     <div className="relative z-10 flex items-center justify-center gap-2">
                       {submitting ? <Loader2 className="animate-spin w-5 h-5" /> : <Save className="w-5 h-5" />}
@@ -663,11 +650,11 @@ export default function KioskHomeClient({
           </div>
 
           {/* --- RIGHT COLUMN: Active Feed --- */}
-          <div className="lg:col-span-7 xl:col-span-8 flex flex-col h-full">
-            <div className="flex items-center justify-between mb-6">
+          <div className="lg:col-span-6 xl:col-span-7 flex flex-col h-full">
+            <div className="flex items-center justify-between mb-3">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">Aktywne Wizyty</h2>
-                <p className="text-slate-500 mt-1">Lista gości przebywających w Twoim dziale</p>
+                <h2 className="text-xl font-bold text-slate-900">Aktywne Wizyty</h2>
+                <p className="text-sm text-slate-500 mt-0.5">Lista gości przebywających w Twoim dziale</p>
               </div>
               <div className="flex items-center gap-2">
                 <button 
@@ -680,7 +667,7 @@ export default function KioskHomeClient({
               </div>
             </div>
 
-            <div className="flex-1">
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1">
               {loadingVisits ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[1,2,3,4].map(i => (
@@ -688,12 +675,12 @@ export default function KioskHomeClient({
                   ))}
                 </div>
               ) : activeVisits.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-dashed border-slate-300">
-                  <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                    <User className="w-10 h-10 text-slate-300" />
+                <div className="flex h-full min-h-64 flex-col items-center justify-center py-10 bg-white rounded-2xl border border-dashed border-slate-300">
+                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-3">
+                    <User className="w-8 h-8 text-slate-300" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900">Brak aktywnych wizyt</h3>
-                  <p className="text-slate-500 max-w-xs text-center mt-2">
+                  <h3 className="text-lg font-bold text-slate-900">Brak aktywnych wizyt</h3>
+                  <p className="text-slate-500 max-w-xs text-center mt-1 text-sm">
                     Wszystkie wizyty w Twoim dziale zostały zakończone. Użyj formularza po lewej, aby dodać nową.
                   </p>
                 </div>
