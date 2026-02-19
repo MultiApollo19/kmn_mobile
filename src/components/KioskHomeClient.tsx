@@ -650,8 +650,8 @@ export default function KioskHomeClient({
           </div>
 
           {/* --- RIGHT COLUMN: Active Feed --- */}
-          <div className="lg:col-span-6 xl:col-span-7 flex flex-col h-full">
-            <div className="flex items-center justify-between mb-3">
+          <div className="lg:col-span-6 xl:col-span-7 flex flex-col h-full min-h-0 overflow-hidden">
+            <div className="shrink-0 flex items-center justify-between mb-3">
               <div>
                 <h2 className="text-xl font-bold text-slate-900">Aktywne Wizyty</h2>
                 <p className="text-sm text-slate-500 mt-0.5">Lista gości przebywających w Twoim dziale</p>
@@ -667,7 +667,7 @@ export default function KioskHomeClient({
               </div>
             </div>
 
-            <div className="kiosk-scrollbar flex-1 min-h-0 overflow-y-scroll pr-1 overscroll-contain">
+            <div className="kiosk-scrollbar flex-1 min-h-0 overflow-y-auto pr-1 overscroll-contain [touch-action:pan-y]">
               {loadingVisits ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[1,2,3,4].map(i => (

@@ -97,6 +97,7 @@
     scrollbar-width: thin;
     scrollbar-color: rgb(148 163 184) rgb(241 245 249);
     scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
   }
 
   .kiosk-scrollbar::-webkit-scrollbar {
