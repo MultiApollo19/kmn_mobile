@@ -541,7 +541,7 @@ export default function KioskHomeClient({
                   {/* Visitor Name */}
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-700 ml-1">
-                      Kogo wpuszczamy? <span className="text-red-500">*</span>
+                      Imię i nazwisko interesanta <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <User className="absolute left-3.5 top-3 w-5 h-5 text-slate-400" />
