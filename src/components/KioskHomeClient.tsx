@@ -697,7 +697,7 @@ export default function KioskHomeClient({
                       <div className="p-5 pl-7 flex flex-col flex-1">
                         <div className="flex justify-between items-start mb-4">
                            <div className="flex items-center gap-3">
-                              <span className="flex items-center justify-center w-24 h-12 rounded-xl bg-slate-100 text-slate-700 font-mono font-bold text-md border border-slate-200 transition-colors">
+                              <span className="flex items-center justify-center w-26 h-12 rounded-xl bg-slate-100 text-slate-700 font-mono font-bold text-ld border border-slate-200 transition-colors">
                                 {visit.badge.badge_number}
                               </span>
                               <div>
