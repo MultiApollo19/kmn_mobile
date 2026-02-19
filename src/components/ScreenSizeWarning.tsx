@@ -19,7 +19,7 @@ export default function ScreenSizeWarning() {
     const isDesktopSize = width > 1024 && ratio > 1.45;
 
     // Exclude Samsung Galaxy Tab A11+ in landscape mode (1200x1920, 16:10)
-    const isGalaxyTabA11Landscape = width === 1920 && height === 1200;
+    const isGalaxyTabA11Landscape = width === 1280 && height === 800;
 
     return !hasTouch || (isDesktopSize && !isGalaxyTabA11Landscape);
   }, [pathname]);

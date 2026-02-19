@@ -196,6 +196,7 @@ export default function KioskHomeClient({
   const [signature, setSignature] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [isGalaxyTabA11Landscape, setIsGalaxyTabA11Landscape] = useState(false);
 
   // Edit Modal State
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
@@ -211,6 +212,17 @@ export default function KioskHomeClient({
     setCurrentTime(new Date());
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const updateViewport = () => {
+      if (typeof window === 'undefined') return;
+      setIsGalaxyTabA11Landscape(window.innerWidth === 1280 && window.innerHeight === 800);
+    };
+
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+    return () => window.removeEventListener('resize', updateViewport);
   }, []);
 
   // Auth check
@@ -433,7 +445,7 @@ export default function KioskHomeClient({
   );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] bg-size-[20px_20px] text-slate-900 font-sans selection:bg-indigo-100">
+    <div className={`min-h-screen bg-[#F8FAFC] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] bg-size-[20px_20px] text-slate-900 font-sans selection:bg-indigo-100${isGalaxyTabA11Landscape ? ' kiosk-1280' : ''}`}>
       {/* Top Navigation */}
       <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
         <div className="max-w-400 mx-auto px-4 sm:px-6 lg:px-8">
@@ -483,10 +495,11 @@ export default function KioskHomeClient({
                 </div>
                 <button 
                   onClick={logout}
-                  className="ml-2 p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200"
+                  className="ml-2 flex items-center gap-2 p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200"
                   title="Wyloguj się"
                 >
                   <LogOut className="w-5 h-5" />
+                  <span className="text-sm font-semibold">Wyloguj</span>
                 </button>
               </div>
             </div>
@@ -689,7 +702,7 @@ export default function KioskHomeClient({
                   {activeVisits.map((visit) => (
                     <div 
                       key={visit.id} 
-                      className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-indigo-200 transition-all duration-300 relative overflow-hidden flex flex-col"
+                      className="group bg-white rounded-2xl border border-slate-200 shadow-sm transition-all duration-300 relative overflow-hidden flex flex-col"
                     >
                       {/* Status Stripe */}
                       <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-500"></div>
@@ -697,11 +710,11 @@ export default function KioskHomeClient({
                       <div className="p-5 pl-7 flex flex-col flex-1">
                         <div className="flex justify-between items-start mb-4">
                            <div className="flex items-center gap-3">
-                              <span className="flex items-center justify-center w-24 h-12 rounded-xl bg-slate-100 text-slate-700 font-mono font-bold text-lg border border-slate-200 group-hover:bg-emerald-50 group-hover:text-emerald-700 group-hover:border-emerald-200 transition-colors">
+                              <span className="flex items-center justify-center w-24 h-12 rounded-xl bg-slate-100 text-slate-700 font-mono font-bold text-md border border-slate-200 transition-colors">
                                 {visit.badge.badge_number}
                               </span>
                               <div>
-                                <h3 className="font-bold text-lg text-slate-900 leading-tight group-hover:text-indigo-900 transition-colors">
+                                <h3 className="font-bold text-lg text-slate-900 leading-tighttransition-colors">
                                   {visit.visitor_name}
                                 </h3>
                                 <div className="flex items-center gap-2 mt-1">

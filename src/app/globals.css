@@ -92,4 +92,17 @@
   .admin-page {
     @apply w-full max-w-none px-4 sm:px-6 lg:px-8 2xl:px-12 pt-4 lg:pt-6;
   }
+
+  .kiosk-1280 .text-xs { font-size: 0.85rem; }
+  .kiosk-1280 .text-sm { font-size: 0.95rem; }
+  .kiosk-1280 .text-base { font-size: 1.05rem; }
+  .kiosk-1280 .text-lg { font-size: 1.2rem; }
+  .kiosk-1280 .text-xl { font-size: 1.35rem; }
+  .kiosk-1280 .text-2xl { font-size: 1.6rem; }
+  .kiosk-1280 input,
+  .kiosk-1280 select,
+  .kiosk-1280 textarea,
+  .kiosk-1280 button {
+    font-size: 1rem;
+  }
 }
