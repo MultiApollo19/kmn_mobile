@@ -441,7 +441,7 @@ export default function KioskHomeClient({
             
             {/* Logo Area */}
             <div className="flex items-center gap-3">
-              <div className="relative h-12 w-24 overflow-hidden rounded-xl">
+              <div className="relative h-34 w-32 overflow-hidden rounded-xl">
                  <Image 
                   src="/Logo.png" 
                   alt="Company Logo" 

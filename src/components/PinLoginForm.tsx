@@ -10,12 +10,14 @@ interface PinLoginFormProps {
   title?: string;
   description?: string;
   redirectPath?: string;
+    showLogo?: boolean;
 }
 
 export default function PinLoginForm({ 
   title = 'Witaj', 
   description = 'Wprowadź swój kod PIN aby kontynuować',
-  redirectPath = '/'
+    redirectPath = '/',
+    showLogo = true
 }: PinLoginFormProps) {
     const { loginWithPin } = useAuth();
     const [pin, setPin] = useState('');
@@ -53,18 +55,23 @@ export default function PinLoginForm({
     const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
     return (
-        <div className="w-full max-w-sm mx-auto p-8 flex flex-col items-center justify-center min-h-[500px]">
-            <div className="mb-2 text-center space-y-2 flex flex-col items-center">
-                <div className="relative w-82 h-42 mb-1">
-                    <Image 
-                        src="/Logo.png" 
-                        alt="Logo" 
-                        fill
-                        className="object-contain"
-                        priority
-                    />
-                </div>
-                <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+        <div className={cn(
+            'w-full max-w-sm mx-auto p-8 flex flex-col items-center justify-center',
+            showLogo ? 'min-h-125' : 'min-h-0'
+        )}>
+            <div className={cn('text-center space-y-2 flex flex-col items-center', showLogo || title ? 'mb-2' : 'mb-4')}>
+                {showLogo && (
+                    <div className="relative w-82 h-42 mb-1">
+                        <Image 
+                            src="/Logo.png" 
+                            alt="Logo" 
+                            fill
+                            className="object-contain"
+                            priority
+                        />
+                    </div>
+                )}
+                {title ? <h1 className="text-3xl font-bold tracking-tight">{title}</h1> : null}
                 <p className="text-muted-foreground text-sm">{description}</p>
             </div>
 
@@ -90,7 +97,7 @@ export default function PinLoginForm({
             )}
 
             {/* Keypad */}
-            <div className="grid grid-cols-3 gap-6 w-full max-w-[280px]">
+            <div className="grid grid-cols-3 gap-6 w-full max-w-70">
                 {numbers.map((num) => (
                     <button
                         key={num}
@@ -127,7 +134,7 @@ export default function PinLoginForm({
                 onClick={() => handleSubmit()}
                 disabled={loading || pin.length !== 4}
                 className={cn(
-                    "mt-8 w-full max-w-[280px] h-12 rounded-xl bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2 transition-all",
+                    "mt-8 w-full max-w-70 h-12 rounded-xl bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2 transition-all",
                     (loading || pin.length !== 4) ? "opacity-0 translate-y-4 pointer-events-none" : "opacity-100 translate-y-0"
                 )}
             >
