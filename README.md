@@ -11,7 +11,11 @@ Wymagane zmienne środowiskowe:
 - `SUPABASE_URL` (opcjonalnie, ale zalecane na serwerze; fallback dla problemów DNS po stronie backendu)
 - `SUPABASE_ANON_KEY` (opcjonalnie, ale zalecane na serwerze)
 - `NEXT_PUBLIC_REQUEST_ENCRYPTION_PUBLIC_KEY` (PEM klucza publicznego RSA, może być w jednej linii z `\\n`)
+- `NEXT_PUBLIC_REQUEST_ENCRYPTION_KEY_ID` (np. `v1`; identyfikator aktualnego klucza publicznego)
 - `REQUEST_ENCRYPTION_PRIVATE_KEY` (PEM klucza prywatnego RSA, tylko po stronie serwera)
+- `REQUEST_ENCRYPTION_PRIVATE_KEYS` (opcjonalnie JSON mapy `kid -> PEM`, dla rotacji kluczy)
+- `REQUEST_ENCRYPTION_ACTIVE_KID` (opcjonalny fallback `kid` po stronie serwera)
+- `REQUEST_ENCRYPTION_REPLAY_WINDOW_MS` (opcjonalnie; domyślnie `300000`, ochrona anti-replay)
 - `REVALIDATION_TOKEN` (zalecany sekret serwerowy dla `/api/revalidate`; fallback: `NEXT_PUBLIC_REVALIDATION_TOKEN`)
 - `CRON_SECRET` (sekret do `/api/cron/auto-exit`, przekazywany w zaszyfrowanym payloadzie `POST`)
 

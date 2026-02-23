@@ -1,8 +1,16 @@
 export type EncryptedRequestPayload = {
   alg: 'RSA-OAEP-256/AES-256-GCM';
+  kid: string;
   key: string;
   iv: string;
   data: string;
+};
+
+type EncryptedEnvelope = {
+  v: 1;
+  ts: number;
+  nonce: string;
+  payload: unknown;
 };
 
 const normalizePem = (value: string) => value.replace(/\\n/g, '\n').trim();
@@ -33,6 +41,7 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
 
 export async function encryptRequestPayload(payload: unknown): Promise<EncryptedRequestPayload> {
   const publicKeyPem = process.env.NEXT_PUBLIC_REQUEST_ENCRYPTION_PUBLIC_KEY;
+  const keyId = process.env.NEXT_PUBLIC_REQUEST_ENCRYPTION_KEY_ID || 'v1';
 
   if (!publicKeyPem) {
     throw new Error('Brak NEXT_PUBLIC_REQUEST_ENCRYPTION_PUBLIC_KEY');
@@ -49,7 +58,15 @@ export async function encryptRequestPayload(payload: unknown): Promise<Encrypted
   );
 
   const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
-  const plaintext = new TextEncoder().encode(JSON.stringify(payload));
+  const nonceBytes = globalThis.crypto.getRandomValues(new Uint8Array(16));
+  const envelope: EncryptedEnvelope = {
+    v: 1,
+    ts: Date.now(),
+    nonce: arrayBufferToBase64(nonceBytes.buffer),
+    payload,
+  };
+
+  const plaintext = new TextEncoder().encode(JSON.stringify(envelope));
   const ciphertext = await globalThis.crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
     aesKey,
@@ -73,6 +90,7 @@ export async function encryptRequestPayload(payload: unknown): Promise<Encrypted
 
   return {
     alg: 'RSA-OAEP-256/AES-256-GCM',
+    kid: keyId,
     key: arrayBufferToBase64(encryptedAesKey),
     iv: arrayBufferToBase64(iv.buffer),
     data: arrayBufferToBase64(ciphertext),
