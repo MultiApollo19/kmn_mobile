@@ -5,13 +5,15 @@ export async function encryptedPost<TResponse = unknown>(
   payload: unknown,
   headers?: Record<string, string>
 ): Promise<TResponse> {
-  const encryptedBody = await encryptRequestPayload(payload);
+  const path = new URL(url, globalThis.location.origin).pathname;
+  const encryptedBody = await encryptRequestPayload(payload, { method: 'POST', path });
 
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-payload-encrypted': '1',
+      'x-payload-version': '2',
       ...(headers || {}),
     },
     body: JSON.stringify(encryptedBody),

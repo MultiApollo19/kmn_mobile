@@ -26,7 +26,7 @@ const normalizeDepartment = (value: EmployeeRow['departments']) => {
 export async function POST(request: Request) {
   try {
     const encryptedBody = await request.json();
-    const { pin } = decryptRequestPayload<VerifyPinBody>(encryptedBody);
+    const { pin } = decryptRequestPayload<VerifyPinBody>(request, encryptedBody);
 
     if (!pin || pin.length < 4) {
       return NextResponse.json({ error: 'Nieprawidłowy PIN' }, { status: 400 });

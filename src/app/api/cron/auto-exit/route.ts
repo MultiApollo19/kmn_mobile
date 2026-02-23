@@ -12,7 +12,7 @@ type AutoExitBody = {
 export async function POST(request: Request) {
   try {
     const encryptedBody = await request.json();
-    const { secret } = decryptRequestPayload<AutoExitBody>(encryptedBody);
+    const { secret } = decryptRequestPayload<AutoExitBody>(request, encryptedBody);
 
     const cronSecret = process.env.CRON_SECRET;
 

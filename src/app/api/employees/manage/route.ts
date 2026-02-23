@@ -16,7 +16,7 @@ type ManageEmployeeBody = {
 export async function POST(request: Request) {
   try {
     const encryptedBody = await request.json();
-    const body = decryptRequestPayload<ManageEmployeeBody>(encryptedBody);
+    const body = decryptRequestPayload<ManageEmployeeBody>(request, encryptedBody);
     const { id, name, department_id, role, pin } = body;
 
     const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;

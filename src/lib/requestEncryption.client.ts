@@ -1,15 +1,24 @@
 export type EncryptedRequestPayload = {
+  v: 2;
   alg: 'RSA-OAEP-256/AES-256-GCM';
   kid: string;
-  key: string;
+  ts: number;
+  requestId: string;
+  context: {
+    method: 'POST';
+    path: string;
+  };
+  wrappedKey: string;
   iv: string;
-  data: string;
+  ciphertext: string;
+};
+
+type RequestEncryptionContext = {
+  method: 'POST';
+  path: string;
 };
 
 type EncryptedEnvelope = {
-  v: 1;
-  ts: number;
-  nonce: string;
   payload: unknown;
 };
 
@@ -39,7 +48,38 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
   return btoa(binary);
 };
 
-export async function encryptRequestPayload(payload: unknown): Promise<EncryptedRequestPayload> {
+const toBase64Url = (bytes: Uint8Array): string => {
+  const base64 = arrayBufferToBase64(bytes.buffer);
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+};
+
+const normalizePath = (path: string): string => {
+  const trimmed = path.trim();
+  if (!trimmed.startsWith('/')) {
+    return `/${trimmed}`;
+  }
+  return trimmed;
+};
+
+const buildAad = (
+  payload: Pick<EncryptedRequestPayload, 'v' | 'alg' | 'kid' | 'ts' | 'requestId' | 'context'>
+): Uint8Array => {
+  return new TextEncoder().encode(
+    JSON.stringify({
+      v: payload.v,
+      alg: payload.alg,
+      kid: payload.kid,
+      ts: payload.ts,
+      requestId: payload.requestId,
+      context: payload.context,
+    })
+  );
+};
+
+export async function encryptRequestPayload(
+  payload: unknown,
+  context: RequestEncryptionContext
+): Promise<EncryptedRequestPayload> {
   const publicKeyPem = process.env.NEXT_PUBLIC_REQUEST_ENCRYPTION_PUBLIC_KEY;
   const keyId = process.env.NEXT_PUBLIC_REQUEST_ENCRYPTION_KEY_ID || 'v1';
 
@@ -47,9 +87,34 @@ export async function encryptRequestPayload(payload: unknown): Promise<Encrypted
     throw new Error('Brak NEXT_PUBLIC_REQUEST_ENCRYPTION_PUBLIC_KEY');
   }
 
-  if (!globalThis.crypto?.subtle) {
-    throw new Error('Web Crypto API jest niedostępne w przeglądarce');
+  if (!globalThis.isSecureContext) {
+    const origin = globalThis.location?.origin || 'unknown-origin';
+    throw new Error(
+      `Web Crypto API wymaga secure context (HTTPS lub localhost). Aktualny origin: ${origin}`
+    );
   }
+
+  if (!globalThis.crypto) {
+    throw new Error('Przeglądarka nie udostępnia window.crypto');
+  }
+
+  if (!globalThis.crypto?.subtle) {
+    throw new Error('Przeglądarka nie udostępnia SubtleCrypto (window.crypto.subtle)');
+  }
+
+  const normalizedContext: RequestEncryptionContext = {
+    method: 'POST',
+    path: normalizePath(context.path),
+  };
+
+  const metadata: Pick<EncryptedRequestPayload, 'v' | 'alg' | 'kid' | 'ts' | 'requestId' | 'context'> = {
+    v: 2,
+    alg: 'RSA-OAEP-256/AES-256-GCM',
+    kid: keyId,
+    ts: Date.now(),
+    requestId: toBase64Url(globalThis.crypto.getRandomValues(new Uint8Array(16))),
+    context: normalizedContext,
+  };
 
   const aesKey = await globalThis.crypto.subtle.generateKey(
     { name: 'AES-GCM', length: 256 },
@@ -58,17 +123,17 @@ export async function encryptRequestPayload(payload: unknown): Promise<Encrypted
   );
 
   const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
-  const nonceBytes = globalThis.crypto.getRandomValues(new Uint8Array(16));
-  const envelope: EncryptedEnvelope = {
-    v: 1,
-    ts: Date.now(),
-    nonce: arrayBufferToBase64(nonceBytes.buffer),
-    payload,
-  };
+  const plaintext = new TextEncoder().encode(
+    JSON.stringify({ payload } satisfies EncryptedEnvelope)
+  );
 
-  const plaintext = new TextEncoder().encode(JSON.stringify(envelope));
   const ciphertext = await globalThis.crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
+    {
+      name: 'AES-GCM',
+      iv,
+      additionalData: buildAad(metadata),
+      tagLength: 128,
+    },
     aesKey,
     plaintext
   );
@@ -82,17 +147,16 @@ export async function encryptRequestPayload(payload: unknown): Promise<Encrypted
   );
 
   const rawAesKey = await globalThis.crypto.subtle.exportKey('raw', aesKey);
-  const encryptedAesKey = await globalThis.crypto.subtle.encrypt(
+  const wrappedKey = await globalThis.crypto.subtle.encrypt(
     { name: 'RSA-OAEP' },
     rsaKey,
     rawAesKey
   );
 
   return {
-    alg: 'RSA-OAEP-256/AES-256-GCM',
-    kid: keyId,
-    key: arrayBufferToBase64(encryptedAesKey),
+    ...metadata,
+    wrappedKey: arrayBufferToBase64(wrappedKey),
     iv: arrayBufferToBase64(iv.buffer),
-    data: arrayBufferToBase64(ciphertext),
+    ciphertext: arrayBufferToBase64(ciphertext),
   };
 }

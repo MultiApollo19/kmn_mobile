@@ -12,7 +12,7 @@ type RevalidateBody = {
 export async function POST(request: NextRequest) {
   try {
     const encryptedBody = await request.json();
-    const { tag, secret } = decryptRequestPayload<RevalidateBody>(encryptedBody);
+    const { tag, secret } = decryptRequestPayload<RevalidateBody>(request, encryptedBody);
 
     // Validate the secret to prevent unauthorized revalidation
     const expectedSecret = process.env.REVALIDATION_TOKEN || process.env.NEXT_PUBLIC_REVALIDATION_TOKEN;

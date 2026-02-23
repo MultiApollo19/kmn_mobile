@@ -56,7 +56,7 @@ function applyFilters<
 export async function POST(request: Request) {
   try {
     const encryptedBody = await request.json();
-    const body = decryptRequestPayload<MutationBody>(encryptedBody);
+    const body = decryptRequestPayload<MutationBody>(request, encryptedBody);
     const { table, action, values, filters } = body;
 
     if (!ALLOWED_TABLES.has(table)) {

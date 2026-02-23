@@ -1,26 +1,42 @@
 import { constants, createDecipheriv, createPrivateKey, privateDecrypt } from 'node:crypto';
 
 type EncryptedRequestPayload = {
+  v: 2;
   alg: 'RSA-OAEP-256/AES-256-GCM';
   kid: string;
-  key: string;
+  ts: number;
+  requestId: string;
+  context: {
+    method: 'POST';
+    path: string;
+  };
+  wrappedKey: string;
   iv: string;
-  data: string;
+  ciphertext: string;
 };
 
 type DecryptedEnvelope = {
-  v: 1;
-  ts: number;
-  nonce: string;
   payload: unknown;
 };
 
+const MAX_REQUEST_AGE_MS = 300000;
+const BASE64_PATTERN = /^[A-Za-z0-9+/]+={0,2}$/;
+const BASE64URL_PATTERN = /^[A-Za-z0-9_-]{16,64}$/;
+
 const normalizePem = (value: string) => value.replace(/\\n/g, '\n').trim();
+
+const normalizePath = (path: string): string => {
+  const trimmed = path.trim();
+  if (!trimmed.startsWith('/')) {
+    return `/${trimmed}`;
+  }
+  return trimmed;
+};
 
 const getReplayWindowMs = () => {
   const configured = Number.parseInt(process.env.REQUEST_ENCRYPTION_REPLAY_WINDOW_MS || '', 10);
   if (Number.isNaN(configured) || configured <= 0) {
-    return 300000;
+    return MAX_REQUEST_AGE_MS;
   }
   return configured;
 };
@@ -75,8 +91,36 @@ const getPrivateKeyPem = (kid: string): string => {
   return single;
 };
 
-const isNonceValid = (value: string): boolean => {
-  return /^[A-Za-z0-9+/]+={0,2}$/.test(value) && value.length >= 20;
+const isBase64 = (value: string): boolean => {
+  return BASE64_PATTERN.test(value);
+};
+
+const isEncryptedRequestPayload = (value: unknown): value is EncryptedRequestPayload => {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const payload = value as Partial<EncryptedRequestPayload>;
+  return (
+    payload.v === 2 &&
+    payload.alg === 'RSA-OAEP-256/AES-256-GCM' &&
+    typeof payload.kid === 'string' &&
+    typeof payload.ts === 'number' &&
+    Number.isFinite(payload.ts) &&
+    typeof payload.requestId === 'string' &&
+    BASE64URL_PATTERN.test(payload.requestId) &&
+    !!payload.context &&
+    typeof payload.context === 'object' &&
+    payload.context.method === 'POST' &&
+    typeof payload.context.path === 'string' &&
+    payload.context.path.length > 0 &&
+    typeof payload.wrappedKey === 'string' &&
+    isBase64(payload.wrappedKey) &&
+    typeof payload.iv === 'string' &&
+    isBase64(payload.iv) &&
+    typeof payload.ciphertext === 'string' &&
+    isBase64(payload.ciphertext)
+  );
 };
 
 const isDecryptedEnvelope = (value: unknown): value is DecryptedEnvelope => {
@@ -84,15 +128,7 @@ const isDecryptedEnvelope = (value: unknown): value is DecryptedEnvelope => {
     return false;
   }
 
-  const payload = value as Partial<DecryptedEnvelope>;
-  return (
-    payload.v === 1 &&
-    typeof payload.ts === 'number' &&
-    Number.isFinite(payload.ts) &&
-    typeof payload.nonce === 'string' &&
-    isNonceValid(payload.nonce) &&
-    'payload' in payload
-  );
+  return 'payload' in value;
 };
 
 const getReplayCache = (): Map<string, number> => {
@@ -119,16 +155,16 @@ const getReplayCache = (): Map<string, number> => {
   return state.__kmnReplayCache;
 };
 
-const assertFreshEnvelope = (envelope: DecryptedEnvelope, kid: string) => {
+const assertFreshPayload = (payload: EncryptedRequestPayload) => {
   const now = Date.now();
   const replayWindowMs = getReplayWindowMs();
-  const tsDiff = Math.abs(now - envelope.ts);
-  if (tsDiff > replayWindowMs) {
+
+  if (Math.abs(now - payload.ts) > replayWindowMs) {
     throw new Error('Payload wygasł lub ma nieprawidłowy znacznik czasu');
   }
 
   const cache = getReplayCache();
-  const cacheKey = `${kid}:${envelope.nonce}`;
+  const cacheKey = `${payload.kid}:${payload.requestId}`;
   const existing = cache.get(cacheKey);
   if (typeof existing === 'number' && existing > now) {
     throw new Error('Wykryto powtórzone żądanie (replay)');
@@ -137,47 +173,66 @@ const assertFreshEnvelope = (envelope: DecryptedEnvelope, kid: string) => {
   cache.set(cacheKey, now + replayWindowMs);
 };
 
-const isEncryptedRequestPayload = (value: unknown): value is EncryptedRequestPayload => {
-  if (!value || typeof value !== 'object') {
-    return false;
+const assertRequestContext = (request: Request, payload: EncryptedRequestPayload) => {
+  const actualMethod = request.method.toUpperCase();
+  if (actualMethod !== payload.context.method) {
+    throw new Error('Niezgodna metoda HTTP w kontekście szyfrowania');
   }
 
-  const payload = value as Partial<EncryptedRequestPayload>;
-  return (
-    payload.alg === 'RSA-OAEP-256/AES-256-GCM' &&
-    typeof payload.kid === 'string' &&
-    typeof payload.key === 'string' &&
-    typeof payload.iv === 'string' &&
-    typeof payload.data === 'string'
+  const actualPath = normalizePath(new URL(request.url).pathname);
+  const expectedPath = normalizePath(payload.context.path);
+  if (actualPath !== expectedPath) {
+    throw new Error('Niezgodna ścieżka żądania w kontekście szyfrowania');
+  }
+};
+
+const buildAad = (
+  payload: Pick<EncryptedRequestPayload, 'v' | 'alg' | 'kid' | 'ts' | 'requestId' | 'context'>
+): Buffer => {
+  return Buffer.from(
+    JSON.stringify({
+      v: payload.v,
+      alg: payload.alg,
+      kid: payload.kid,
+      ts: payload.ts,
+      requestId: payload.requestId,
+      context: payload.context,
+    }),
+    'utf8'
   );
 };
 
-export function decryptRequestPayload<T>(value: unknown): T {
+export function decryptRequestPayload<T>(request: Request, value: unknown): T {
   if (!isEncryptedRequestPayload(value)) {
-    throw new Error('Payload musi być zaszyfrowany');
+    throw new Error('Payload musi być zaszyfrowany i zgodny z protokołem v2');
   }
 
-  const privateKeyPem = getPrivateKeyPem(value.kid);
+  assertRequestContext(request, value);
+  assertFreshPayload(value);
 
+  const privateKeyPem = getPrivateKeyPem(value.kid);
   const privateKey = createPrivateKey(normalizePem(privateKeyPem));
 
-  const encryptedAesKey = Buffer.from(value.key, 'base64');
-  const aesKey = privateDecrypt(
+  const wrappedKey = Buffer.from(value.wrappedKey, 'base64');
+  const key = privateDecrypt(
     {
       key: privateKey,
       padding: constants.RSA_PKCS1_OAEP_PADDING,
       oaepHash: 'sha256',
     },
-    encryptedAesKey
+    wrappedKey
   );
 
-  const iv = Buffer.from(value.iv, 'base64');
-  const fullCiphertext = Buffer.from(value.data, 'base64');
+  if (key.length !== 32) {
+    throw new Error('Nieprawidłowa długość klucza symetrycznego');
+  }
 
+  const iv = Buffer.from(value.iv, 'base64');
   if (iv.length !== 12) {
     throw new Error('Nieprawidłowy IV');
   }
 
+  const fullCiphertext = Buffer.from(value.ciphertext, 'base64');
   if (fullCiphertext.length <= 16) {
     throw new Error('Nieprawidłowy szyfrogram');
   }
@@ -185,7 +240,8 @@ export function decryptRequestPayload<T>(value: unknown): T {
   const authTag = fullCiphertext.subarray(fullCiphertext.length - 16);
   const ciphertext = fullCiphertext.subarray(0, fullCiphertext.length - 16);
 
-  const decipher = createDecipheriv('aes-256-gcm', aesKey, iv);
+  const decipher = createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAAD(buildAad(value));
   decipher.setAuthTag(authTag);
 
   const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
@@ -194,6 +250,5 @@ export function decryptRequestPayload<T>(value: unknown): T {
     throw new Error('Nieprawidłowa struktura odszyfrowanego payloadu');
   }
 
-  assertFreshEnvelope(decrypted, value.kid);
   return decrypted.payload as T;
 }
