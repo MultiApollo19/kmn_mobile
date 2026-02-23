@@ -4,18 +4,27 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
+const decodeActorHeader = (value: string | null) => {
+  if (!value) return null;
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
 type ManageEmployeeBody = {
   id: number | null;
   name: string;
   department_id: number | null;
   role: 'user' | 'admin' | 'department_admin';
-  pin_hash: string | null;
+  pinHash: string | null;
 };
 
 export async function POST(request: Request) {
   try {
     const body = await request.json() as ManageEmployeeBody;
-    const { id, name, department_id, role, pin_hash } = body;
+    const { id, name, department_id, role, pinHash } = body;
 
     const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -28,8 +37,8 @@ export async function POST(request: Request) {
     const authHeader = request.headers.get('Authorization');
     const actorHeaders: Record<string, string> = {};
     const actorId = request.headers.get('x-employee-id');
-    const actorName = request.headers.get('x-employee-name');
-    const actorDeptName = request.headers.get('x-employee-department-name');
+    const actorName = decodeActorHeader(request.headers.get('x-employee-name'));
+    const actorDeptName = decodeActorHeader(request.headers.get('x-employee-department-name'));
     if (actorId) actorHeaders['x-employee-id'] = actorId;
     if (actorName) actorHeaders['x-employee-name'] = actorName;
     if (actorDeptName) actorHeaders['x-employee-department-name'] = actorDeptName;
@@ -73,17 +82,16 @@ export async function POST(request: Request) {
     }
 
     // 2. Handle PIN without sending plaintext to Supabase RPC
-    if (pin_hash) {
-      if (!/^[a-f0-9]{64}$/i.test(pin_hash)) {
+    if (pinHash) {
+      if (!/^[a-f0-9]{64}$/i.test(pinHash)) {
         return NextResponse.json({ error: 'Nieprawidłowy format PIN hash' }, { status: 400 });
       }
 
-      const pinHash = await hash(pin_hash, 12);
+      const hashedPin = await hash(pinHash, 12);
       const { error: pinError } = await supabase
         .from('employees')
         .update({
-          password: pinHash,
-          pin_hash: pinHash,
+          password: hashedPin,
         })
         .eq('id', targetId);
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
+import { buildActorHeaders } from '@/src/lib/supabaseActor';
 import { useAuth } from '@/src/hooks/useAuth';
 import { Plus, Trash2, Edit2, Save, X, Loader2, Building2 } from 'lucide-react';
 import Modal from '@/src/components/Modal';
@@ -88,9 +89,7 @@ export default function DepartmentsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
-          ...(user?.name ? { 'x-employee-name': user.name } : {}),
-          ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+          ...buildActorHeaders(user),
         },
         body: JSON.stringify({
           table: 'departments',
@@ -121,9 +120,7 @@ export default function DepartmentsPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
-            ...(user?.name ? { 'x-employee-name': user.name } : {}),
-            ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+            ...buildActorHeaders(user),
           },
           body: JSON.stringify({
             table: 'departments',
@@ -137,9 +134,7 @@ export default function DepartmentsPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
-            ...(user?.name ? { 'x-employee-name': user.name } : {}),
-            ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+            ...buildActorHeaders(user),
           },
           body: JSON.stringify({
             table: 'departments',

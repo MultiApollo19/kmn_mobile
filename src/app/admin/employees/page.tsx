@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
+import { buildActorHeaders } from '@/src/lib/supabaseActor';
 import { useAuth } from '@/src/hooks/useAuth';
 import { hashPinClient } from '@/src/lib/pinHash.client';
 import { Plus, Trash2, Edit2, Save, X, Loader2, Building2, User, Shield, Users } from 'lucide-react';
@@ -134,9 +135,7 @@ export default function EmployeesPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
-          ...(user?.name ? { 'x-employee-name': user.name } : {}),
-          ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+          ...buildActorHeaders(user),
         },
         body: JSON.stringify({
           table: 'employees',
@@ -179,14 +178,12 @@ export default function EmployeesPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
-          ...(user?.name ? { 'x-employee-name': user.name } : {}),
-          ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+          ...buildActorHeaders(user),
         },
         body: JSON.stringify({
           id: isEditing || null,
           name: formData.name,
-          pin_hash: pinHash,
+          pinHash,
           role: formData.role,
           department_id: formData.department_id ? parseInt(formData.department_id) : null,
         }),

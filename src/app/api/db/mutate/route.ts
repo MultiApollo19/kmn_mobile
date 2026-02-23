@@ -3,6 +3,15 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
+const decodeActorHeader = (value: string | null) => {
+  if (!value) return null;
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
 type FilterOp = 'eq' | 'is' | 'gte' | 'lt';
 
 type MutationFilter = {
@@ -71,8 +80,8 @@ export async function POST(request: Request) {
     const authHeader = request.headers.get('Authorization');
     const actorHeaders: Record<string, string> = {};
     const actorId = request.headers.get('x-employee-id');
-    const actorName = request.headers.get('x-employee-name');
-    const actorDeptName = request.headers.get('x-employee-department-name');
+    const actorName = decodeActorHeader(request.headers.get('x-employee-name'));
+    const actorDeptName = decodeActorHeader(request.headers.get('x-employee-department-name'));
     if (actorId) actorHeaders['x-employee-id'] = actorId;
     if (actorName) actorHeaders['x-employee-name'] = actorName;
     if (actorDeptName) actorHeaders['x-employee-department-name'] = actorDeptName;
