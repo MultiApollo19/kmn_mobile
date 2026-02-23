@@ -22,6 +22,39 @@ const normalizeDepartment = (value: EmployeeRow['departments']) => {
   return value.name || '';
 };
 
+type ErrorCauseDiagnostics = {
+  code: string | null;
+  errno: string | number | null;
+  syscall: string | null;
+  hostname: string | null;
+};
+
+const getErrorCauseDiagnostics = (error: unknown): ErrorCauseDiagnostics => {
+  if (!error || typeof error !== 'object') {
+    return { code: null, errno: null, syscall: null, hostname: null };
+  }
+
+  const errorWithCause = error as { cause?: unknown };
+  const cause = errorWithCause.cause;
+  if (!cause || typeof cause !== 'object') {
+    return { code: null, errno: null, syscall: null, hostname: null };
+  }
+
+  const networkCause = cause as {
+    code?: string;
+    errno?: string | number;
+    syscall?: string;
+    hostname?: string;
+  };
+
+  return {
+    code: networkCause.code ?? null,
+    errno: networkCause.errno ?? null,
+    syscall: networkCause.syscall ?? null,
+    hostname: networkCause.hostname ?? null,
+  };
+};
+
 export async function POST(request: Request) {
   try {
     const { pinHash } = await request.json() as VerifyPinBody;
@@ -67,8 +100,16 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     console.error('Verify PIN API Error:', error);
     const err = error as { message?: string };
+    const diagnostics = getErrorCauseDiagnostics(error);
+    const detailedMessage = diagnostics.code
+      ? `${err?.message || 'Wystąpił błąd serwera'} (${diagnostics.code})`
+      : (err?.message || 'Wystąpił błąd serwera');
+
     return NextResponse.json(
-      { error: err?.message || 'Wystąpił błąd serwera' },
+      {
+        error: detailedMessage,
+        cause: diagnostics,
+      },
       { status: 500 }
     );
   }

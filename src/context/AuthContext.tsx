@@ -370,22 +370,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const pinHash = await hashPinClient(pin);
 
-    const loginRes = await fetch('/api/auth/verify-pin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pinHash }),
-    });
-    const loginData = await loginRes.json();
-    if (!loginRes.ok) {
-      const message =
-        typeof loginData?.error === 'string'
-          ? loginData.error
-          : typeof loginData?.message === 'string'
-            ? loginData.message
-            : 'Nieprawidłowy PIN';
-      throw new Error(message);
+    let empData: EmployeeRPCResponse | null = null;
+
+    try {
+      const loginRes = await fetch('/api/auth/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pinHash }),
+      });
+      const loginData = await loginRes.json();
+      if (!loginRes.ok) {
+        const message =
+          typeof loginData?.error === 'string'
+            ? loginData.error
+            : typeof loginData?.message === 'string'
+              ? loginData.message
+              : 'Nieprawidłowy PIN';
+
+        const normalized = message.toLowerCase();
+        const shouldFallbackToRpc =
+          loginRes.status >= 500 &&
+          (normalized.includes('fetch failed') || normalized.includes('network'));
+
+        if (!shouldFallbackToRpc) {
+          throw new Error(message);
+        }
+
+        console.warn('verify-pin API unavailable, fallback to direct Supabase RPC');
+      } else {
+        empData = loginData as EmployeeRPCResponse;
+      }
+    } catch (apiErr) {
+      console.warn('verify-pin API error, fallback to direct Supabase RPC', apiErr);
     }
-    const empData = loginData as EmployeeRPCResponse;
+
+    if (!empData) {
+      const { data, error } = await supabase.rpc('verify_employee_pin', { p_pin_hash: pinHash });
+      if (error) {
+        throw new Error(error.message || 'Nieprawidłowy PIN');
+      }
+      const rows = (data || []) as EmployeeRPCResponse[];
+      empData = rows[0] || null;
+      if (!empData) {
+        throw new Error('Nieprawidłowy PIN');
+      }
+    }
 
     let userData: UserType | null = null;
     let authEmail = '';
