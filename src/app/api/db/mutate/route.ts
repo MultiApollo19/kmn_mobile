@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
-import { decryptRequestPayload } from '@/src/lib/requestEncryption.server';
+import { NextResponse, NextRequest } from 'next/server';
+import { decryptPayload } from '@/src/lib/simpleDecryption';
 
 export const runtime = 'nodejs';
 
@@ -53,10 +53,9 @@ function applyFilters<
   return current;
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const encryptedBody = await request.json();
-    const body = decryptRequestPayload<MutationBody>(request, encryptedBody);
+    const body = await decryptPayload<MutationBody>(request);
     const { table, action, values, filters } = body;
 
     if (!ALLOWED_TABLES.has(table)) {

@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { hash } from 'bcryptjs';
-import { NextResponse } from 'next/server';
-import { decryptRequestPayload } from '@/src/lib/requestEncryption.server';
+import { NextResponse, NextRequest } from 'next/server';
+import { decryptPayload } from '@/src/lib/simpleDecryption';
 
 export const runtime = 'nodejs';
 
@@ -13,10 +13,9 @@ type ManageEmployeeBody = {
   pin: string | null;
 };
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const encryptedBody = await request.json();
-    const body = decryptRequestPayload<ManageEmployeeBody>(request, encryptedBody);
+    const body = await decryptPayload<ManageEmployeeBody>(request);
     const { id, name, department_id, role, pin } = body;
 
     const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;

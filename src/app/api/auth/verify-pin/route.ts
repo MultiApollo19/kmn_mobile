@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { compare } from 'bcryptjs';
-import { NextResponse } from 'next/server';
-import { decryptRequestPayload } from '@/src/lib/requestEncryption.server';
+import { NextResponse, NextRequest } from 'next/server';
+import { decryptPayload } from '@/src/lib/simpleDecryption';
 
 export const runtime = 'nodejs';
 
@@ -23,10 +23,9 @@ const normalizeDepartment = (value: EmployeeRow['departments']) => {
   return value.name || '';
 };
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const encryptedBody = await request.json();
-    const { pin } = decryptRequestPayload<VerifyPinBody>(request, encryptedBody);
+    const { pin } = await decryptPayload<VerifyPinBody>(request);
 
     if (!pin || pin.length < 4) {
       return NextResponse.json({ error: 'Nieprawidłowy PIN' }, { status: 400 });

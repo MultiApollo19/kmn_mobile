@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { supabase } from '@/src/lib/supabase';
-import { decryptRequestPayload } from '@/src/lib/requestEncryption.server';
+import { decryptPayload } from '@/src/lib/simpleDecryption';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -9,10 +9,9 @@ type AutoExitBody = {
   secret: string;
 };
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const encryptedBody = await request.json();
-    const { secret } = decryptRequestPayload<AutoExitBody>(request, encryptedBody);
+    const { secret } = await decryptPayload<AutoExitBody>(request);
 
     const cronSecret = process.env.CRON_SECRET;
 

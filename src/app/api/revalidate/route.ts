@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { decryptRequestPayload } from '@/src/lib/requestEncryption.server';
+import { decryptPayload } from '@/src/lib/simpleDecryption';
 
 export const runtime = 'nodejs';
 
@@ -11,8 +11,7 @@ type RevalidateBody = {
 
 export async function POST(request: NextRequest) {
   try {
-    const encryptedBody = await request.json();
-    const { tag, secret } = decryptRequestPayload<RevalidateBody>(request, encryptedBody);
+    const { tag, secret } = await decryptPayload<RevalidateBody>(request);
 
     // Validate the secret to prevent unauthorized revalidation
     const expectedSecret = process.env.REVALIDATION_TOKEN || process.env.NEXT_PUBLIC_REVALIDATION_TOKEN;
