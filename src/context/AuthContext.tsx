@@ -31,7 +31,66 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const AUTO_EXIT_TIMEZONE = 'Europe/Warsaw';
+const AUTO_EXIT_HOUR = 16;
+const AUTO_EXIT_INTERVAL_MS = 60 * 1000;
 const SESSION_WARNING_LEAD_MS = 2 * 60 * 1000;
+
+type TimeZoneParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+};
+
+const getTimeZoneParts = (date: Date, timeZone: string): TimeZoneParts => {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(date).reduce<Record<string, string>>((acc, part) => {
+    if (part.type !== 'literal') acc[part.type] = part.value;
+    return acc;
+  }, {});
+
+  return {
+    year: Number(parts.year),
+    month: Number(parts.month),
+    day: Number(parts.day),
+    hour: Number(parts.hour),
+    minute: Number(parts.minute),
+    second: Number(parts.second),
+  };
+};
+
+const getTimeZoneOffsetMs = (timeZone: string, date: Date) => {
+  const parts = getTimeZoneParts(date, timeZone);
+  const asUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  return asUtc - date.getTime();
+};
+
+const zonedTimeToUtcIso = (
+  timeZone: string,
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number
+) => {
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, second);
+  const offset = getTimeZoneOffsetMs(timeZone, new Date(utcGuess));
+  return new Date(utcGuess - offset).toISOString();
+};
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserType | null>(null);
@@ -42,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const warningTimer = useRef<number | null>(null);
   const warningInterval = useRef<number | null>(null);
   const activityHandlerRef = useRef<(() => void) | null>(null);
+  const autoExitInFlightRef = useRef(false);
 
   const clearLogoutTimer = useCallback(() => {
     if (logoutTimer.current) {
@@ -214,7 +274,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) {
       teardownInactivityTracking();
       clearLogoutTimer();
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       clearWarningTimers();
       return;
     }
@@ -247,6 +306,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       delete window.kmnShowSessionWarning;
     };
   }, [clearWarningTimers, startWarningCountdown]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const runHiddenAutoExit = async () => {
+      if (autoExitInFlightRef.current) return;
+
+      const now = new Date();
+      const nowParts = getTimeZoneParts(now, AUTO_EXIT_TIMEZONE);
+      if (nowParts.hour < AUTO_EXIT_HOUR) return;
+
+      const cutoffIso = zonedTimeToUtcIso(
+        AUTO_EXIT_TIMEZONE,
+        nowParts.year,
+        nowParts.month,
+        nowParts.day,
+        AUTO_EXIT_HOUR,
+        0,
+        0
+      );
+
+      autoExitInFlightRef.current = true;
+      try {
+        await encryptedPost('/api/db/mutate', {
+          table: 'visits',
+          action: 'update',
+          values: { exit_time: cutoffIso, is_system_exit: true },
+          filters: [
+            { column: 'exit_time', op: 'is', value: null },
+            { column: 'entry_time', op: 'lt', value: cutoffIso },
+          ],
+        });
+      } catch (err) {
+        console.error('Hidden auto-exit error:', err);
+      } finally {
+        autoExitInFlightRef.current = false;
+      }
+    };
+
+    void runHiddenAutoExit();
+    const interval = window.setInterval(() => {
+      void runHiddenAutoExit();
+    }, AUTO_EXIT_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, []);
 
   const loginWithPin = async (pin: string, redirectPath: string = '/') => {
     interface EmployeeRPCResponse {
