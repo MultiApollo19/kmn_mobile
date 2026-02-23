@@ -19,6 +19,7 @@ import DateRangePicker from '@/src/components/DateRangePicker';
 type VisitSummary = {
   id: number;
   purpose_id?: number | null;
+  badge_id?: number | null;
   entry_time: string;
   exit_time: string | null;
   visitor_name: string;
@@ -58,6 +59,7 @@ export default function SystemExitsPage() {
         .select(`
           id:visit_id,
           purpose_id,
+          badge_id,
           entry_time,
           exit_time,
           visitor_name,
@@ -67,9 +69,6 @@ export default function SystemExitsPage() {
             departments (
               name
             )
-          ),
-          badges:badges!visit_history_badge_id_fkey (
-            badge_number
           )
         `)
         .eq('is_system_exit', true);
@@ -129,10 +128,41 @@ export default function SystemExitsPage() {
         }
       }
 
+      const badgeIds = Array.from(
+        new Set(
+          ((data as Array<{ badge_id?: number | null }> | null) ?? [])
+            .map((visit) => visit.badge_id)
+            .filter((id): id is number => typeof id === 'number')
+        )
+      );
+
+      let badgeMap: Record<number, string> = {};
+      if (badgeIds.length > 0) {
+        const { data: badgesData, error: badgesError } = await supabase
+          .from('badges')
+          .select('id, badge_number')
+          .in('id', badgeIds);
+
+        if (badgesError) {
+          console.error('Error fetching badges:', badgesError);
+        } else {
+          badgeMap = ((badgesData as Array<{ id: number; badge_number: string }> | null) ?? []).reduce<Record<number, string>>(
+            (acc, badge) => {
+              acc[badge.id] = badge.badge_number;
+              return acc;
+            },
+            {}
+          );
+        }
+      }
+
       const hydratedData = ((data as unknown as VisitSummary[]) ?? []).map((visit) => ({
         ...visit,
         visit_purposes: visit.purpose_id
           ? { name: purposeMap[visit.purpose_id] ?? '' }
+          : null,
+        badges: visit.badge_id
+          ? { badge_number: badgeMap[visit.badge_id] ?? '' }
           : null,
       }));
 
