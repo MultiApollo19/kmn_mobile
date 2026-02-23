@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { NextResponse, NextRequest } from 'next/server';
-import { decryptPayload } from '@/src/lib/simpleDecryption';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
@@ -53,9 +52,9 @@ function applyFilters<
   return current;
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const body = await decryptPayload<MutationBody>(request);
+    const body = await request.json() as MutationBody;
     const { table, action, values, filters } = body;
 
     if (!ALLOWED_TABLES.has(table)) {
@@ -124,7 +123,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   return NextResponse.json(
-    { message: 'Use encrypted POST payload' },
+    { message: 'Method not allowed' },
     { status: 405 }
   );
 }

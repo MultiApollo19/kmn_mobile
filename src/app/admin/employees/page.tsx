@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
-import { encryptedPost } from '@/src/lib/encryptedApiClient';
 import { useAuth } from '@/src/hooks/useAuth';
+import { hashPinClient } from '@/src/lib/pinHash.client';
 import { Plus, Trash2, Edit2, Save, X, Loader2, Building2, User, Shield, Users } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import Modal from '@/src/components/Modal';
@@ -130,15 +130,21 @@ export default function EmployeesPage() {
     if (!confirm('Czy na pewno chcesz usunąć tego pracownika?')) return;
 
     try {
-      await encryptedPost('/api/db/mutate', {
-        table: 'employees',
-        action: 'delete',
-        filters: [{ column: 'id', op: 'eq', value: id }],
-      }, {
-        ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
-        ...(user?.name ? { 'x-employee-name': user.name } : {}),
-        ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+      const deleteRes = await fetch('/api/db/mutate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
+          ...(user?.name ? { 'x-employee-name': user.name } : {}),
+          ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+        },
+        body: JSON.stringify({
+          table: 'employees',
+          action: 'delete',
+          filters: [{ column: 'id', op: 'eq', value: id }],
+        })
       });
+      if (!deleteRes.ok) throw new Error(`HTTP ${deleteRes.status}`);
       fetchData();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Wystąpił błąd';
@@ -167,17 +173,25 @@ export default function EmployeesPage() {
     }
 
     try {
-      await encryptedPost('/api/employees/manage', {
-        id: isEditing || null,
-        name: formData.name,
-        pin: formData.pin || null,
-        role: formData.role,
-        department_id: formData.department_id ? parseInt(formData.department_id) : null,
-      }, {
-        ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
-        ...(user?.name ? { 'x-employee-name': user.name } : {}),
-        ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+      const pinHash = formData.pin ? await hashPinClient(formData.pin) : null;
+
+      const response = await fetch('/api/employees/manage', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
+          ...(user?.name ? { 'x-employee-name': user.name } : {}),
+          ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+        },
+        body: JSON.stringify({
+          id: isEditing || null,
+          name: formData.name,
+          pin_hash: pinHash,
+          role: formData.role,
+          department_id: formData.department_id ? parseInt(formData.department_id) : null,
+        }),
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       handleCancel();
       fetchData();

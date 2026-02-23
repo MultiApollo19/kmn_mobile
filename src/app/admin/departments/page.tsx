@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
-import { encryptedPost } from '@/src/lib/encryptedApiClient';
 import { useAuth } from '@/src/hooks/useAuth';
 import { Plus, Trash2, Edit2, Save, X, Loader2, Building2 } from 'lucide-react';
 import Modal from '@/src/components/Modal';
@@ -85,15 +84,21 @@ export default function DepartmentsPage() {
     if (!confirm('Czy na pewno chcesz usunąć ten dział?')) return;
 
     try {
-      await encryptedPost('/api/db/mutate', {
-        table: 'departments',
-        action: 'delete',
-        filters: [{ column: 'id', op: 'eq', value: id }],
-      }, {
-        ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
-        ...(user?.name ? { 'x-employee-name': user.name } : {}),
-        ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+      const response = await fetch('/api/db/mutate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
+          ...(user?.name ? { 'x-employee-name': user.name } : {}),
+          ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+        },
+        body: JSON.stringify({
+          table: 'departments',
+          action: 'delete',
+          filters: [{ column: 'id', op: 'eq', value: id }],
+        }),
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       fetchDepartments();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Wystąpił błąd';
@@ -112,26 +117,38 @@ export default function DepartmentsPage() {
 
     try {
       if (isAdding) {
-        await encryptedPost('/api/db/mutate', {
-          table: 'departments',
-          action: 'insert',
-          values: [{ name: formData.name }],
-        }, {
-          ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
-          ...(user?.name ? { 'x-employee-name': user.name } : {}),
-          ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+        const response = await fetch('/api/db/mutate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
+            ...(user?.name ? { 'x-employee-name': user.name } : {}),
+            ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+          },
+          body: JSON.stringify({
+            table: 'departments',
+            action: 'insert',
+            values: [{ name: formData.name }],
+          }),
         });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
       } else if (isEditing) {
-        await encryptedPost('/api/db/mutate', {
-          table: 'departments',
-          action: 'update',
-          values: { name: formData.name },
-          filters: [{ column: 'id', op: 'eq', value: isEditing }],
-        }, {
-          ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
-          ...(user?.name ? { 'x-employee-name': user.name } : {}),
-          ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+        const response = await fetch('/api/db/mutate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
+            ...(user?.name ? { 'x-employee-name': user.name } : {}),
+            ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+          },
+          body: JSON.stringify({
+            table: 'departments',
+            action: 'update',
+            values: { name: formData.name },
+            filters: [{ column: 'id', op: 'eq', value: isEditing }],
+          }),
         });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
       }
 
       handleCancel();

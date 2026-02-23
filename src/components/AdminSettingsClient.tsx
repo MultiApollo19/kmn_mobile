@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
-import { encryptedPost } from '@/src/lib/encryptedApiClient';
 import { Loader2, Plus, Trash2, Edit2, Check, X, AlertCircle, Shield, Settings as SettingsIcon, Flag } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useAuth } from '@/src/hooks/useAuth';
@@ -89,11 +88,16 @@ export default function AdminSettingsClient() {
     if (!newPurpose.trim()) return;
     
     try {
-      await encryptedPost('/api/db/mutate', {
-        table: 'visit_purposes',
-        action: 'insert',
-        values: [{ name: newPurpose.trim() }],
+      const response = await fetch('/api/db/mutate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table: 'visit_purposes',
+          action: 'insert',
+          values: [{ name: newPurpose.trim() }],
+        }),
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       await loadData();
       setNewPurpose('');
@@ -111,12 +115,17 @@ export default function AdminSettingsClient() {
     
     setSavingId(id);
     try {
-      await encryptedPost('/api/db/mutate', {
-        table: 'visit_purposes',
-        action: 'update',
-        values: { name: editingName.trim() },
-        filters: [{ column: 'id', op: 'eq', value: id }],
+      const response = await fetch('/api/db/mutate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table: 'visit_purposes',
+          action: 'update',
+          values: { name: editingName.trim() },
+          filters: [{ column: 'id', op: 'eq', value: id }],
+        }),
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       await loadData();
       setEditingId(null);
@@ -136,11 +145,16 @@ export default function AdminSettingsClient() {
     if (!confirm('Na pewno chcesz usunąć ten cel wizyty?')) return;
     
     try {
-      await encryptedPost('/api/db/mutate', {
-        table: 'visit_purposes',
-        action: 'delete',
-        filters: [{ column: 'id', op: 'eq', value: id }],
+      const response = await fetch('/api/db/mutate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table: 'visit_purposes',
+          action: 'delete',
+          filters: [{ column: 'id', op: 'eq', value: id }],
+        }),
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       await loadData();
       setSuccess('Cel wizyty usunięty pomyślnie');
@@ -157,11 +171,16 @@ export default function AdminSettingsClient() {
     
     setAddingBadge(true);
     try {
-      await encryptedPost('/api/db/mutate', {
-        table: 'badges',
-        action: 'insert',
-        values: [{ badge_number: newBadgeNumber.trim() }],
+      const response = await fetch('/api/db/mutate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table: 'badges',
+          action: 'insert',
+          values: [{ badge_number: newBadgeNumber.trim() }],
+        }),
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       await loadData();
       setNewBadgeNumber('');
@@ -178,12 +197,17 @@ export default function AdminSettingsClient() {
   // Toggle Badge
   const handleToggleBadge = async (id: number, currentStatus: boolean) => {
     try {
-      await encryptedPost('/api/db/mutate', {
-        table: 'badges',
-        action: 'update',
-        values: { is_active: !currentStatus },
-        filters: [{ column: 'id', op: 'eq', value: id }],
+      const response = await fetch('/api/db/mutate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table: 'badges',
+          action: 'update',
+          values: { is_active: !currentStatus },
+          filters: [{ column: 'id', op: 'eq', value: id }],
+        }),
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       await loadData();
       setSuccess(`Identyfikator ${!currentStatus ? 'aktywowany' : 'deaktywowany'} pomyślnie`);
@@ -199,11 +223,16 @@ export default function AdminSettingsClient() {
     if (!confirm('Na pewno chcesz usunąć ten identyfikator?')) return;
     
     try {
-      await encryptedPost('/api/db/mutate', {
-        table: 'badges',
-        action: 'delete',
-        filters: [{ column: 'id', op: 'eq', value: id }],
+      const response = await fetch('/api/db/mutate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table: 'badges',
+          action: 'delete',
+          filters: [{ column: 'id', op: 'eq', value: id }],
+        }),
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       await loadData();
       setSuccess('Identyfikator usunięty pomyślnie');

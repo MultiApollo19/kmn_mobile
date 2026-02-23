@@ -4,7 +4,6 @@ import { useAuth } from "@/src/hooks/useAuth";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/src/lib/supabase";
-import { encryptedPost } from "@/src/lib/encryptedApiClient";
 import {
   LogOut,
   User,
@@ -308,8 +307,19 @@ export default function KioskHomeClient({
          return;
       }
 
-      await encryptedPost('/api/revalidate', { tag: 'visits', secret });
-      await encryptedPost('/api/revalidate', { tag: 'dashboard', secret });
+      let response = await fetch('/api/revalidate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag: 'visits', secret }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      response = await fetch('/api/revalidate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag: 'dashboard', secret }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
     } catch (err) {
       console.error('Failed to revalidate cache', err);
     }
@@ -334,18 +344,23 @@ export default function KioskHomeClient({
 
       if (!badgeId || !purposeId) throw new Error("Invalid selection");
 
-      await encryptedPost('/api/db/mutate', {
-        table: 'visits',
-        action: 'insert',
-        values: {
-          employee_id: user.id,
-          visitor_name: visitorName,
-          purpose_id: purposeId,
-          badge_id: badgeId,
-          notes,
-          signature,
-        }
+      const response = await fetch('/api/db/mutate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table: 'visits',
+          action: 'insert',
+          values: {
+            employee_id: user.id,
+            visitor_name: visitorName,
+            purpose_id: purposeId,
+            badge_id: badgeId,
+            notes,
+            signature,
+          },
+        }),
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       // Reset Form
       setVisitorName('');
@@ -368,17 +383,22 @@ export default function KioskHomeClient({
     if (!confirm("Czy na pewno chcesz zakończyć tę wizytę?")) return;
 
     try {
-      await encryptedPost('/api/db/mutate', {
-        table: 'visits',
-        action: 'update',
-        values: {
-          exit_time: new Date().toISOString(),
-          exit_employee_id: user?.id,
-        },
-        filters: [
-          { column: 'id', op: 'eq', value: visitId },
-        ],
+      const response = await fetch('/api/db/mutate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table: 'visits',
+          action: 'update',
+          values: {
+            exit_time: new Date().toISOString(),
+            exit_employee_id: user?.id,
+          },
+          filters: [
+            { column: 'id', op: 'eq', value: visitId },
+          ],
+        }),
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       await fetchData();
       await revalidateCache();
@@ -410,19 +430,24 @@ export default function KioskHomeClient({
       const purposeId = purposes.find(p => p.name === editPurpose)?.id;
       const badgeId = badges.find(b => b.badge_number === editBadge)?.id;
       
-      await encryptedPost('/api/db/mutate', {
-        table: 'visits',
-        action: 'update',
-        values: {
-          visitor_name: editVisitorName,
-          notes: editNotes,
-          purpose_id: purposeId,
-          badge_id: badgeId,
-        },
-        filters: [
-          { column: 'id', op: 'eq', value: editingVisit.id },
-        ],
+      const response = await fetch('/api/db/mutate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table: 'visits',
+          action: 'update',
+          values: {
+            visitor_name: editVisitorName,
+            notes: editNotes,
+            purpose_id: purposeId,
+            badge_id: badgeId,
+          },
+          filters: [
+            { column: 'id', op: 'eq', value: editingVisit.id },
+          ],
+        }),
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       
       await fetchData();
       await revalidateCache();

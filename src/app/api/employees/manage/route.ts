@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { hash } from 'bcryptjs';
-import { NextResponse, NextRequest } from 'next/server';
-import { decryptPayload } from '@/src/lib/simpleDecryption';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
@@ -10,13 +9,13 @@ type ManageEmployeeBody = {
   name: string;
   department_id: number | null;
   role: 'user' | 'admin' | 'department_admin';
-  pin: string | null;
+  pin_hash: string | null;
 };
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const body = await decryptPayload<ManageEmployeeBody>(request);
-    const { id, name, department_id, role, pin } = body;
+    const body = await request.json() as ManageEmployeeBody;
+    const { id, name, department_id, role, pin_hash } = body;
 
     const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -74,8 +73,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Handle PIN without sending plaintext to Supabase RPC
-    if (pin) {
-      const pinHash = await hash(pin, 12);
+    if (pin_hash) {
+      if (!/^[a-f0-9]{64}$/i.test(pin_hash)) {
+        return NextResponse.json({ error: 'Nieprawidłowy format PIN hash' }, { status: 400 });
+      }
+
+      const pinHash = await hash(pin_hash, 12);
       const { error: pinError } = await supabase
         .from('employees')
         .update({

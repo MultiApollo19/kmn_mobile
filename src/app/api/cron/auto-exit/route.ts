@@ -1,6 +1,5 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { supabase } from '@/src/lib/supabase';
-import { decryptPayload } from '@/src/lib/simpleDecryption';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -9,9 +8,9 @@ type AutoExitBody = {
   secret: string;
 };
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const { secret } = await decryptPayload<AutoExitBody>(request);
+    const { secret } = await request.json() as AutoExitBody;
 
     const cronSecret = process.env.CRON_SECRET;
 
@@ -85,7 +84,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   return NextResponse.json(
-    { message: 'Use encrypted POST payload' },
+    { message: 'Method not allowed' },
     { status: 405 }
   );
 }

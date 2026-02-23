@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { decryptPayload } from '@/src/lib/simpleDecryption';
 
 export const runtime = 'nodejs';
 
@@ -11,7 +10,7 @@ type RevalidateBody = {
 
 export async function POST(request: NextRequest) {
   try {
-    const { tag, secret } = await decryptPayload<RevalidateBody>(request);
+    const { tag, secret } = await request.json() as RevalidateBody;
 
     // Validate the secret to prevent unauthorized revalidation
     const expectedSecret = process.env.REVALIDATION_TOKEN || process.env.NEXT_PUBLIC_REVALIDATION_TOKEN;
@@ -36,7 +35,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   void request;
   return NextResponse.json(
-    { message: 'Use encrypted POST payload' },
+    { message: 'Method not allowed' },
     { status: 405 }
   );
 }

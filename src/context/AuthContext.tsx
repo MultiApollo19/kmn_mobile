@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/src/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { encryptedPost } from '@/src/lib/encryptedApiClient';
+import { hashPinClient } from '@/src/lib/pinHash.client';
 
 declare global {
   interface Window {
@@ -329,15 +329,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       autoExitInFlightRef.current = true;
       try {
-        await encryptedPost('/api/db/mutate', {
-          table: 'visits',
-          action: 'update',
-          values: { exit_time: cutoffIso, is_system_exit: true },
-          filters: [
-            { column: 'exit_time', op: 'is', value: null },
-            { column: 'entry_time', op: 'lt', value: cutoffIso },
-          ],
+        const response = await fetch('/api/db/mutate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            table: 'visits',
+            action: 'update',
+            values: { exit_time: cutoffIso, is_system_exit: true },
+            filters: [
+              { column: 'exit_time', op: 'is', value: null },
+              { column: 'entry_time', op: 'lt', value: cutoffIso },
+            ],
+          }),
         });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
       } catch (err) {
         console.error('Hidden auto-exit error:', err);
       } finally {
@@ -363,7 +368,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       department_name: string;
     }
 
-    const empData = await encryptedPost<EmployeeRPCResponse>('/api/auth/verify-pin', { pin });
+    const pinHash = await hashPinClient(pin);
+
+    const loginRes = await fetch('/api/auth/verify-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pinHash }),
+    });
+    const loginData = await loginRes.json();
+    if (!loginRes.ok) {
+      const message =
+        typeof loginData?.error === 'string'
+          ? loginData.error
+          : typeof loginData?.message === 'string'
+            ? loginData.message
+            : 'Nieprawidłowy PIN';
+      throw new Error(message);
+    }
+    const empData = loginData as EmployeeRPCResponse;
 
     let userData: UserType | null = null;
     let authEmail = '';
@@ -400,15 +422,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // If it fails, we catch it but don't block login (or maybe we should?).
       // For now, let's try to insert. If 'user_logs' is public-insertable or we don't care about RLS for logs, it's fine.
       try {
-          await encryptedPost('/api/db/mutate', {
-            table: 'user_logs',
-            action: 'insert',
-            values: {
-            user_name: userData.name,
-            user_type: userData.type,
-            department_name: userData.department
-            }
+          const logRes = await fetch('/api/db/mutate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              table: 'user_logs',
+              action: 'insert',
+              values: {
+                user_name: userData.name,
+                user_type: userData.type,
+                department_name: userData.department,
+              },
+            }),
           });
+          if (!logRes.ok) throw new Error(`HTTP ${logRes.status}`);
       } catch (logErr) {
           console.warn("Failed to log login:", logErr);
       }

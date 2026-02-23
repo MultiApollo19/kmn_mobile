@@ -1,12 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { compare } from 'bcryptjs';
-import { NextResponse, NextRequest } from 'next/server';
-import { decryptPayload } from '@/src/lib/simpleDecryption';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
 type VerifyPinBody = {
-  pin: string;
+  pinHash: string;
 };
 
 type EmployeeRow = {
@@ -23,11 +22,11 @@ const normalizeDepartment = (value: EmployeeRow['departments']) => {
   return value.name || '';
 };
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const { pin } = await decryptPayload<VerifyPinBody>(request);
+    const { pinHash } = await request.json() as VerifyPinBody;
 
-    if (!pin || pin.length < 4) {
+    if (!pinHash || !/^[a-f0-9]{64}$/i.test(pinHash)) {
       return NextResponse.json({ error: 'Nieprawidłowy PIN' }, { status: 400 });
     }
 
@@ -53,7 +52,7 @@ export async function POST(request: NextRequest) {
       const hash = employee.password;
       if (!hash) continue;
 
-      const isValid = await compare(pin, hash);
+      const isValid = await compare(pinHash, hash);
       if (!isValid) continue;
 
       return NextResponse.json({
@@ -77,7 +76,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   return NextResponse.json(
-    { message: 'Use encrypted POST payload' },
+    { message: 'Method not allowed' },
     { status: 405 }
   );
 }
