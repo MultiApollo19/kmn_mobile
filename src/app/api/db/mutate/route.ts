@@ -30,21 +30,18 @@ const ALLOWED_TABLES = new Set([
   'employees',
 ]);
 
-function applyFilters(
-  query: {
-    eq: (column: string, value: unknown) => unknown;
-    is: (column: string, value: unknown) => unknown;
-    gte: (column: string, value: unknown) => unknown;
-    lt: (column: string, value: unknown) => unknown;
+function applyFilters<
+  T extends {
+    eq: (column: string, value: unknown) => T;
+    is: (column: string, value: unknown) => T;
+    gte: (column: string, value: unknown) => T;
+    lt: (column: string, value: unknown) => T;
   },
+>(
+  query: T,
   filters: MutationFilter[] = []
 ) {
-  let current = query as unknown as {
-    eq: (column: string, value: unknown) => typeof current;
-    is: (column: string, value: unknown) => typeof current;
-    gte: (column: string, value: unknown) => typeof current;
-    lt: (column: string, value: unknown) => typeof current;
-  };
+  let current = query;
 
   for (const filter of filters) {
     if (filter.op === 'eq') current = current.eq(filter.column, filter.value);

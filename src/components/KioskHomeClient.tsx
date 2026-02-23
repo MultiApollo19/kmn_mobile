@@ -35,11 +35,69 @@ export interface Badge {
 }
 
 const BADGE_COLLATOR = new Intl.Collator('pl', { numeric: true, sensitivity: 'base' });
+const AUTO_EXIT_TIMEZONE = 'Europe/Warsaw';
+const AUTO_EXIT_HOUR = 16;
 
 const normalizeBadgeNumber = (value: string) => value.trim();
 
 const compareBadgeNumber = (left: string, right: string) =>
   BADGE_COLLATOR.compare(normalizeBadgeNumber(left), normalizeBadgeNumber(right));
+
+type TimeZoneParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+};
+
+const getTimeZoneParts = (date: Date, timeZone: string): TimeZoneParts => {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(date).reduce<Record<string, string>>((acc, part) => {
+    if (part.type !== 'literal') acc[part.type] = part.value;
+    return acc;
+  }, {});
+
+  return {
+    year: Number(parts.year),
+    month: Number(parts.month),
+    day: Number(parts.day),
+    hour: Number(parts.hour),
+    minute: Number(parts.minute),
+    second: Number(parts.second),
+  };
+};
+
+const getTimeZoneOffsetMs = (timeZone: string, date: Date) => {
+  const parts = getTimeZoneParts(date, timeZone);
+  const asUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  return asUtc - date.getTime();
+};
+
+const zonedTimeToUtcIso = (
+  timeZone: string,
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number
+) => {
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, second);
+  const offset = getTimeZoneOffsetMs(timeZone, new Date(utcGuess));
+  return new Date(utcGuess - offset).toISOString();
+};
 
 interface ActiveVisit {
   id: number;
@@ -298,6 +356,7 @@ export default function KioskHomeClient({
     !usedBadgeNumbers.includes(b.badge_number)
   );
   const showSkeleton = loadingVisits && purposes.length === 0 && badges.length === 0;
+  const autoExitInFlightRef = useRef(false);
 
   const revalidateCache = async () => {
     try {
@@ -314,6 +373,72 @@ export default function KioskHomeClient({
       console.error('Failed to revalidate cache', err);
     }
   };
+
+  const runKioskAutoExit = useCallback(async () => {
+    if (!user || activeVisits.length === 0 || autoExitInFlightRef.current) return;
+
+    const now = new Date();
+    const updates = activeVisits
+      .map((visit) => {
+        const entryDate = new Date(visit.entry_time);
+        const entryParts = getTimeZoneParts(entryDate, AUTO_EXIT_TIMEZONE);
+        const cutoffIso = zonedTimeToUtcIso(
+          AUTO_EXIT_TIMEZONE,
+          entryParts.year,
+          entryParts.month,
+          entryParts.day,
+          AUTO_EXIT_HOUR,
+          0,
+          0
+        );
+        const cutoffDate = new Date(cutoffIso);
+
+        if (entryDate >= cutoffDate) return null;
+        if (now < cutoffDate) return null;
+
+        return { id: visit.id, cutoffIso };
+      })
+      .filter((value): value is { id: number; cutoffIso: string } => value !== null);
+
+    if (updates.length === 0) return;
+
+    autoExitInFlightRef.current = true;
+    try {
+      await Promise.all(
+        updates.map((item) =>
+          encryptedPost('/api/db/mutate', {
+            table: 'visits',
+            action: 'update',
+            values: { exit_time: item.cutoffIso, is_system_exit: true },
+            filters: [
+              { column: 'id', op: 'eq', value: item.id },
+              { column: 'exit_time', op: 'is', value: null },
+            ],
+          })
+        )
+      );
+
+      await fetchData();
+      await revalidateCache();
+    } catch (err) {
+      console.error('Kiosk auto-exit error:', err);
+    } finally {
+      autoExitInFlightRef.current = false;
+    }
+  }, [activeVisits, fetchData, user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    void runKioskAutoExit();
+    const interval = window.setInterval(() => {
+      void runKioskAutoExit();
+    }, 60 * 1000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [runKioskAutoExit, user]);
 
   const handleAdmission = async (e: React.FormEvent) => {
     e.preventDefault();
