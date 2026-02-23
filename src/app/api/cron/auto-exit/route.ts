@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/src/lib/supabase';
+import { decryptRequestPayload } from '@/src/lib/requestEncryption.server';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-export async function GET(request: Request) {
+type AutoExitBody = {
+  secret: string;
+};
+
+export async function POST(request: Request) {
   try {
-    // Check for optional authorization if configured
-    const authHeader = request.headers.get('authorization');
+    const encryptedBody = await request.json();
+    const { secret } = decryptRequestPayload<AutoExitBody>(encryptedBody);
+
     const cronSecret = process.env.CRON_SECRET;
-    
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+
+    if (cronSecret && secret !== cronSecret) {
       return new Response('Unauthorized', { status: 401 });
     }
 
@@ -75,4 +82,11 @@ export async function GET(request: Request) {
     console.error('Internal Server Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
+}
+
+export async function GET() {
+  return NextResponse.json(
+    { message: 'Use encrypted POST payload' },
+    { status: 405 }
+  );
 }

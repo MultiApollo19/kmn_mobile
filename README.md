@@ -2,6 +2,26 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+## Environment
+
+Wymagane zmienne środowiskowe:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_URL` (opcjonalnie, ale zalecane na serwerze; fallback dla problemów DNS po stronie backendu)
+- `SUPABASE_ANON_KEY` (opcjonalnie, ale zalecane na serwerze)
+- `NEXT_PUBLIC_REQUEST_ENCRYPTION_PUBLIC_KEY` (PEM klucza publicznego RSA, może być w jednej linii z `\\n`)
+- `REQUEST_ENCRYPTION_PRIVATE_KEY` (PEM klucza prywatnego RSA, tylko po stronie serwera)
+- `REVALIDATION_TOKEN` (zalecany sekret serwerowy dla `/api/revalidate`; fallback: `NEXT_PUBLIC_REVALIDATION_TOKEN`)
+- `CRON_SECRET` (sekret do `/api/cron/auto-exit`, przekazywany w zaszyfrowanym payloadzie `POST`)
+
+Przykładowe generowanie pary kluczy RSA 2048:
+
+```bash
+openssl genpkey -algorithm RSA -out request_private.pem -pkeyopt rsa_keygen_bits:2048
+openssl rsa -pubout -in request_private.pem -out request_public.pem
+```
+
 First, run the development server:
 
 ```bash

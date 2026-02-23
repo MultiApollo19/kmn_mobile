@@ -28,6 +28,7 @@ type VisitSummary = {
   exit_time: string | null;
   visitor_name: string;
   notes: string | null;
+  signature: string | null;
   employees: {
     name: string;
     departments: {
@@ -59,8 +60,6 @@ export default function HistoryReportPage() {
   
   // Details Modal
   const [selectedVisit, setSelectedVisit] = useState<VisitSummary | null>(null);
-  const [visitSignature, setVisitSignature] = useState<string | null>(null);
-  const [loadingSignature, setLoadingSignature] = useState(false);
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -71,27 +70,28 @@ export default function HistoryReportPage() {
     try {
       // Querying the visits table
       let query = supabase
-        .from('visits')
+        .from('visit_history')
         .select(`
-          id,
+          id:visit_id,
           entry_time,
           exit_time,
           visitor_name,
           notes,
-          employees:employees!visits_employee_id_fkey (
+          signature,
+          employees:employees!visit_history_employee_id_fkey (
             name,
             departments (
               name
             )
           ),
           is_system_exit,
-          exit_employees:employees!visits_exit_employee_id_fkey (
+          exit_employees:employees!visit_history_exit_employee_id_fkey (
             name
           ),
-          visit_purposes (
+          visit_purposes:visit_purposes!visit_history_purpose_id_fkey (
             name
           ),
-          badges (
+          badges:badges!visit_history_badge_id_fkey (
             badge_number
           )
         `);
@@ -144,33 +144,6 @@ export default function HistoryReportPage() {
     fetchHistory();
   }, [fetchHistory]);
 
-  // Fetch signature from visits table
-  useEffect(() => {
-    if (selectedVisit) {
-      const fetchSignature = async () => {
-        setLoadingSignature(true);
-        try {
-          const { data, error } = await supabase
-            .from('visits')
-            .select('signature')
-            .eq('id', selectedVisit.id) 
-            .single();
-            
-          if (error) throw error;
-          setVisitSignature(data.signature);
-        } catch (err) {
-          console.error("Error fetching signature", err);
-          setVisitSignature(null);
-        } finally {
-          setLoadingSignature(false);
-        }
-      };
-      fetchSignature();
-    } else {
-      setVisitSignature(null);
-    }
-  }, [selectedVisit]);
-
   const filteredVisits = visits.filter(visit => {
     const searchLower = searchTerm.toLowerCase();
     return (
@@ -192,19 +165,7 @@ export default function HistoryReportPage() {
     setIsExporting(true);
 
     try {
-      const ids = filteredVisits.map(v => v.id); // these are visit ids now
-      
-      const { data: signaturesData, error } = await supabase
-        .from('visits')
-        .select('id, signature')
-        .in('id', ids);
-
-      if (error) throw error;
-
-      const visitsWithSignatures = filteredVisits.map(v => ({
-        ...v,
-        signature: signaturesData?.find(s => s.id === v.id)?.signature || null
-      }));
+      const visitsWithSignatures = filteredVisits;
 
       const doc = new jsPDF({ orientation: 'landscape' });
       
@@ -611,10 +572,8 @@ export default function HistoryReportPage() {
                        <div className="pt-4 border-t border-slate-200/50">
                           <div className="text-xs text-slate-400 mb-2">Podpis pracownika</div>
                           <div className="h-24 w-full bg-white rounded border border-slate-200 flex items-center justify-center relative overflow-hidden">
-                              {loadingSignature ? (
-                                 <Loader2 className="w-4 h-4 animate-spin text-slate-300" />
-                              ) : visitSignature ? (
-                                 <Image src={visitSignature} alt="Podpis" fill className="object-contain p-2" />
+                              {selectedVisit.signature ? (
+                                <Image src={selectedVisit.signature} alt="Podpis" fill className="object-contain p-2" />
                               ) : (
                                  <span className="text-xs text-slate-300 italic">Brak</span>
                               )}

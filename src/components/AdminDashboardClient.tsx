@@ -164,6 +164,31 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
   }, [fetchDashboardData]);
 
   useEffect(() => {
+    const interval = setInterval(() => {
+      void fetchDashboardData();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [fetchDashboardData]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-dashboard-visits')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'visits' },
+        () => {
+          void fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [fetchDashboardData]);
+
+  useEffect(() => {
     if (!selectedVisit) {
       setVisitSignature(null);
       return;

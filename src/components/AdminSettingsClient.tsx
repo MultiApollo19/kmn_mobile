@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
-import { createActorClient } from '@/src/lib/supabaseActor';
+import { encryptedPost } from '@/src/lib/encryptedApiClient';
 import { Loader2, Plus, Trash2, Edit2, Check, X, AlertCircle, Shield, Settings as SettingsIcon, Flag } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useAuth } from '@/src/hooks/useAuth';
@@ -89,16 +89,13 @@ export default function AdminSettingsClient() {
     if (!newPurpose.trim()) return;
     
     try {
-      const actorClient = createActorClient(user);
-      const { data, error } = await actorClient
-        .from('visit_purposes')
-        .insert([{ name: newPurpose.trim() }])
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      setPurposes([...purposes, data]);
+      await encryptedPost('/api/db/mutate', {
+        table: 'visit_purposes',
+        action: 'insert',
+        values: [{ name: newPurpose.trim() }],
+      });
+
+      await loadData();
       setNewPurpose('');
       setSuccess('Cel wizyty dodany pomyślnie');
       setTimeout(() => setSuccess(null), 3000);
@@ -114,15 +111,14 @@ export default function AdminSettingsClient() {
     
     setSavingId(id);
     try {
-      const actorClient = createActorClient(user);
-      const { error } = await actorClient
-        .from('visit_purposes')
-        .update({ name: editingName.trim() })
-        .eq('id', id);
-      
-      if (error) throw error;
-      
-      setPurposes(purposes.map(p => p.id === id ? { ...p, name: editingName.trim() } : p));
+      await encryptedPost('/api/db/mutate', {
+        table: 'visit_purposes',
+        action: 'update',
+        values: { name: editingName.trim() },
+        filters: [{ column: 'id', op: 'eq', value: id }],
+      });
+
+      await loadData();
       setEditingId(null);
       setEditingName('');
       setSuccess('Cel wizyty zaktualizowany pomyślnie');
@@ -140,15 +136,13 @@ export default function AdminSettingsClient() {
     if (!confirm('Na pewno chcesz usunąć ten cel wizyty?')) return;
     
     try {
-      const actorClient = createActorClient(user);
-      const { error } = await actorClient
-        .from('visit_purposes')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-      
-      setPurposes(purposes.filter(p => p.id !== id));
+      await encryptedPost('/api/db/mutate', {
+        table: 'visit_purposes',
+        action: 'delete',
+        filters: [{ column: 'id', op: 'eq', value: id }],
+      });
+
+      await loadData();
       setSuccess('Cel wizyty usunięty pomyślnie');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -163,16 +157,13 @@ export default function AdminSettingsClient() {
     
     setAddingBadge(true);
     try {
-      const actorClient = createActorClient(user);
-      const { data, error } = await actorClient
-        .from('badges')
-        .insert([{ badge_number: newBadgeNumber.trim() }])
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      setBadges([...badges, data]);
+      await encryptedPost('/api/db/mutate', {
+        table: 'badges',
+        action: 'insert',
+        values: [{ badge_number: newBadgeNumber.trim() }],
+      });
+
+      await loadData();
       setNewBadgeNumber('');
       setSuccess('Identyfikator dodany pomyślnie');
       setTimeout(() => setSuccess(null), 3000);
@@ -187,15 +178,14 @@ export default function AdminSettingsClient() {
   // Toggle Badge
   const handleToggleBadge = async (id: number, currentStatus: boolean) => {
     try {
-      const actorClient = createActorClient(user);
-      const { error } = await actorClient
-        .from('badges')
-        .update({ is_active: !currentStatus })
-        .eq('id', id);
-      
-      if (error) throw error;
-      
-      setBadges(badges.map(b => b.id === id ? { ...b, is_active: !currentStatus } : b));
+      await encryptedPost('/api/db/mutate', {
+        table: 'badges',
+        action: 'update',
+        values: { is_active: !currentStatus },
+        filters: [{ column: 'id', op: 'eq', value: id }],
+      });
+
+      await loadData();
       setSuccess(`Identyfikator ${!currentStatus ? 'aktywowany' : 'deaktywowany'} pomyślnie`);
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -209,15 +199,13 @@ export default function AdminSettingsClient() {
     if (!confirm('Na pewno chcesz usunąć ten identyfikator?')) return;
     
     try {
-      const actorClient = createActorClient(user);
-      const { error } = await actorClient
-        .from('badges')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-      
-      setBadges(badges.filter(b => b.id !== id));
+      await encryptedPost('/api/db/mutate', {
+        table: 'badges',
+        action: 'delete',
+        filters: [{ column: 'id', op: 'eq', value: id }],
+      });
+
+      await loadData();
       setSuccess('Identyfikator usunięty pomyślnie');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {

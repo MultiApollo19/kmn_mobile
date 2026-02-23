@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/src/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { encryptedPost } from '@/src/lib/encryptedApiClient';
 
 declare global {
   interface Window {
@@ -351,16 +352,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
 
       try {
-        const { error } = await supabase
-          .from('visits')
-          .update({ exit_time: cutoffIso, is_system_exit: true })
-          .is('exit_time', null)
-          .gte('entry_time', startIso)
-          .lt('entry_time', endIso);
-
-        if (error) {
-          console.error('Auto-exit update failed:', error);
-        }
+        await encryptedPost('/api/db/mutate', {
+          table: 'visits',
+          action: 'update',
+          values: { exit_time: cutoffIso, is_system_exit: true },
+          filters: [
+            { column: 'exit_time', op: 'is', value: null },
+            { column: 'entry_time', op: 'gte', value: startIso },
+            { column: 'entry_time', op: 'lt', value: endIso },
+          ],
+        });
       } catch (err) {
         console.error('Auto-exit update error:', err);
       }
@@ -370,8 +371,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const loginWithPin = async (pin: string, redirectPath: string = '/') => {
-    // 1. Verify PIN via RPC (Secure Lookup)
-    // The RPC checks the PIN against the bcrypt hash in the database.
     interface EmployeeRPCResponse {
       id: number;
       name: string;
@@ -379,14 +378,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       department_name: string;
     }
 
-    const { data: empData, error: empError } = await supabase
-      .rpc('verify_employee_pin', { p_pin: pin })
-      .maybeSingle<EmployeeRPCResponse>();
+    const empData = await encryptedPost<EmployeeRPCResponse>('/api/auth/verify-pin', { pin });
 
     let userData: UserType | null = null;
     let authEmail = '';
     
-    if (empData && !empError) {
+    if (empData) {
       userData = {
         id: empData.id,
         name: empData.name,
@@ -402,9 +399,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Nieprawidłowy PIN');
     }
 
-    // 3. Authenticate (Skip Supabase Auth for Employees - Local State Only)
-    // We trust verify_employee_pin result.
-    
     try {
       // 4. Success - Update State
       setUser(userData);
@@ -421,10 +415,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // If it fails, we catch it but don't block login (or maybe we should?).
       // For now, let's try to insert. If 'user_logs' is public-insertable or we don't care about RLS for logs, it's fine.
       try {
-          await supabase.from('user_logs').insert({
+          await encryptedPost('/api/db/mutate', {
+            table: 'user_logs',
+            action: 'insert',
+            values: {
             user_name: userData.name,
             user_type: userData.type,
             department_name: userData.department
+            }
           });
       } catch (logErr) {
           console.warn("Failed to log login:", logErr);

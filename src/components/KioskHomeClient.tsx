@@ -4,6 +4,7 @@ import { useAuth } from "@/src/hooks/useAuth";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/src/lib/supabase";
+import { encryptedPost } from "@/src/lib/encryptedApiClient";
 import {
   LogOut,
   User,
@@ -306,8 +307,9 @@ export default function KioskHomeClient({
          console.warn("Missing NEXT_PUBLIC_REVALIDATION_TOKEN - skipping revalidation");
          return;
       }
-      await fetch(`/api/revalidate?tag=visits&secret=${secret}`);
-      await fetch(`/api/revalidate?tag=dashboard&secret=${secret}`);
+
+      await encryptedPost('/api/revalidate', { tag: 'visits', secret });
+      await encryptedPost('/api/revalidate', { tag: 'dashboard', secret });
     } catch (err) {
       console.error('Failed to revalidate cache', err);
     }
@@ -332,16 +334,18 @@ export default function KioskHomeClient({
 
       if (!badgeId || !purposeId) throw new Error("Invalid selection");
 
-      const { error } = await supabase.from('visits').insert({
-        employee_id: user.id,
-        visitor_name: visitorName,
-        purpose_id: purposeId,
-        badge_id: badgeId,
-        notes: notes,
-        signature: signature
+      await encryptedPost('/api/db/mutate', {
+        table: 'visits',
+        action: 'insert',
+        values: {
+          employee_id: user.id,
+          visitor_name: visitorName,
+          purpose_id: purposeId,
+          badge_id: badgeId,
+          notes,
+          signature,
+        }
       });
-
-      if (error) throw error;
 
       // Reset Form
       setVisitorName('');
@@ -364,15 +368,18 @@ export default function KioskHomeClient({
     if (!confirm("Czy na pewno chcesz zakończyć tę wizytę?")) return;
 
     try {
-      const { error } = await supabase
-        .from('visits')
-        .update({ 
+      await encryptedPost('/api/db/mutate', {
+        table: 'visits',
+        action: 'update',
+        values: {
           exit_time: new Date().toISOString(),
-          exit_employee_id: user?.id
-        })
-        .eq('id', visitId);
+          exit_employee_id: user?.id,
+        },
+        filters: [
+          { column: 'id', op: 'eq', value: visitId },
+        ],
+      });
 
-      if (error) throw error;
       await fetchData();
       await revalidateCache();
     } catch (err) {
@@ -403,17 +410,19 @@ export default function KioskHomeClient({
       const purposeId = purposes.find(p => p.name === editPurpose)?.id;
       const badgeId = badges.find(b => b.badge_number === editBadge)?.id;
       
-      const { error } = await supabase
-        .from('visits')
-        .update({ 
+      await encryptedPost('/api/db/mutate', {
+        table: 'visits',
+        action: 'update',
+        values: {
           visitor_name: editVisitorName,
           notes: editNotes,
           purpose_id: purposeId,
-          badge_id: badgeId
-        })
-        .eq('id', editingVisit.id);
-
-      if (error) throw error;
+          badge_id: badgeId,
+        },
+        filters: [
+          { column: 'id', op: 'eq', value: editingVisit.id },
+        ],
+      });
       
       await fetchData();
       await revalidateCache();

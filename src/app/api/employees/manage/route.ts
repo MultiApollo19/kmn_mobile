@@ -1,10 +1,30 @@
 import { createClient } from '@supabase/supabase-js';
+import { hash } from 'bcryptjs';
 import { NextResponse } from 'next/server';
+import { decryptRequestPayload } from '@/src/lib/requestEncryption.server';
+
+export const runtime = 'nodejs';
+
+type ManageEmployeeBody = {
+  id: number | null;
+  name: string;
+  department_id: number | null;
+  role: 'user' | 'admin' | 'department_admin';
+  pin: string | null;
+};
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const encryptedBody = await request.json();
+    const body = decryptRequestPayload<ManageEmployeeBody>(encryptedBody);
     const { id, name, department_id, role, pin } = body;
+
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Brak konfiguracji Supabase (SUPABASE_URL / SUPABASE_ANON_KEY)');
+    }
 
     // Use the caller's authorization (Admin) to perform operations
     const authHeader = request.headers.get('Authorization');
@@ -17,8 +37,8 @@ export async function POST(request: Request) {
     if (actorDeptName) actorHeaders['x-employee-department-name'] = actorDeptName;
 
     const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      supabaseUrl,
+      supabaseAnonKey,
       {
         global: {
           headers: {
@@ -54,12 +74,17 @@ export async function POST(request: Request) {
        targetId = newEmp.id;
     }
 
-    // 2. Handle PIN (Update DB Hash only)
+    // 2. Handle PIN without sending plaintext to Supabase RPC
     if (pin) {
-      const { error: pinError } = await supabase.rpc('update_employee_password', {
-        p_employee_id: targetId,
-        p_pin: pin
-      });
+      const pinHash = await hash(pin, 12);
+      const { error: pinError } = await supabase
+        .from('employees')
+        .update({
+          password: pinHash,
+          pin_hash: pinHash,
+        })
+        .eq('id', targetId);
+
       if (pinError) throw pinError;
     }
 

@@ -53,23 +53,23 @@ export default function SystemExitsPage() {
     setLoading(true);
     try {
       let query = supabase
-        .from('visits')
+        .from('visit_history')
         .select(`
-          id,
+          id:visit_id,
           entry_time,
           exit_time,
           visitor_name,
           notes,
-          employees:employees!visits_employee_id_fkey (
+          employees:employees!visit_history_employee_id_fkey (
             name,
             departments (
               name
             )
           ),
-          visit_purposes (
+          visit_purposes:visit_purposes!visit_history_purpose_id_fkey (
             name
           ),
-          badges (
+          badges:badges!visit_history_badge_id_fkey (
             badge_number
           )
         `)

@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
+import { decryptRequestPayload } from '@/src/lib/requestEncryption.server';
+
+export const runtime = 'nodejs';
+
+type RevalidateBody = {
+  tag: string;
+  secret: string;
+};
 
 export async function POST(request: NextRequest) {
   try {
-    const { tag, secret } = await request.json();
+    const encryptedBody = await request.json();
+    const { tag, secret } = decryptRequestPayload<RevalidateBody>(encryptedBody);
 
     // Validate the secret to prevent unauthorized revalidation
-        const expectedSecret = process.env.NEXT_PUBLIC_REVALIDATION_TOKEN;
+    const expectedSecret = process.env.REVALIDATION_TOKEN || process.env.NEXT_PUBLIC_REVALIDATION_TOKEN;
     
     if (secret !== expectedSecret) {
       return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
@@ -25,23 +34,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Allow GET for easier testing via browser or simple webhooks
 export async function GET(request: NextRequest) {
-  const tag = request.nextUrl.searchParams.get('tag');
-  const secret = request.nextUrl.searchParams.get('secret');
-
-      const expectedSecret = process.env.NEXT_PUBLIC_REVALIDATION_TOKEN;
-
-  if (secret !== expectedSecret) {
-    return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
-  }
-
-  if (!tag) {
-    return NextResponse.json({ message: 'Tag is required' }, { status: 400 });
-  }
-
-  // Trigger revalidation for the specific tag
-  revalidateTag(tag, 'max');
-
-  return NextResponse.json({ revalidated: true, now: Date.now() });
+  void request;
+  return NextResponse.json(
+    { message: 'Use encrypted POST payload' },
+    { status: 405 }
+  );
 }

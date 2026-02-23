@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
-import { createActorClient } from '@/src/lib/supabaseActor';
+import { encryptedPost } from '@/src/lib/encryptedApiClient';
 import { useAuth } from '@/src/hooks/useAuth';
 import { Plus, Trash2, Edit2, Save, X, Loader2, Building2, User, Shield, Users } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
@@ -42,11 +42,7 @@ export default function EmployeesPage() {
   });
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     
     // Fetch Employees with Departments
@@ -101,7 +97,15 @@ export default function EmployeesPage() {
     setEmployees(normalizedEmployees as Employee[]);
     setDepartments(deptRes.data || []);
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void fetchData();
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [fetchData]);
 
   const handleEdit = (emp: Employee) => {
     setIsEditing(emp.id);
@@ -125,16 +129,20 @@ export default function EmployeesPage() {
   const handleDelete = async (id: number) => {
     if (!confirm('Czy na pewno chcesz usunąć tego pracownika?')) return;
 
-    const actorClient = createActorClient(user);
-    const { error } = await actorClient
-      .from('employees')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      alert('Błąd podczas usuwania: ' + error.message);
-    } else {
+    try {
+      await encryptedPost('/api/db/mutate', {
+        table: 'employees',
+        action: 'delete',
+        filters: [{ column: 'id', op: 'eq', value: id }],
+      }, {
+        ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
+        ...(user?.name ? { 'x-employee-name': user.name } : {}),
+        ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+      });
       fetchData();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Wystąpił błąd';
+      alert('Błąd podczas usuwania: ' + message);
     }
   };
 
@@ -159,29 +167,17 @@ export default function EmployeesPage() {
     }
 
     try {
-      // Use API Route for safe upsert and Auth Sync
-      const response = await fetch('/api/employees/manage', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
-          ...(user?.name ? { 'x-employee-name': user.name } : {}),
-          ...(user?.department ? { 'x-employee-department-name': user.department } : {})
-        },
-        body: JSON.stringify({
-            id: isEditing || null,
-            name: formData.name,
-            pin: formData.pin || null,
-            role: formData.role,
-            department_id: formData.department_id ? parseInt(formData.department_id) : null,
-        }),
+      await encryptedPost('/api/employees/manage', {
+        id: isEditing || null,
+        name: formData.name,
+        pin: formData.pin || null,
+        role: formData.role,
+        department_id: formData.department_id ? parseInt(formData.department_id) : null,
+      }, {
+        ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
+        ...(user?.name ? { 'x-employee-name': user.name } : {}),
+        ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-          throw new Error(data.error || 'Wystąpił błąd podczas zapisu');
-      }
 
       handleCancel();
       fetchData();

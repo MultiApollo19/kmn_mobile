@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
-import { createActorClient } from '@/src/lib/supabaseActor';
+import { encryptedPost } from '@/src/lib/encryptedApiClient';
 import { useAuth } from '@/src/hooks/useAuth';
 import { Plus, Trash2, Edit2, Save, X, Loader2, Building2 } from 'lucide-react';
 import Modal from '@/src/components/Modal';
@@ -26,11 +26,7 @@ export default function DepartmentsPage() {
   const [formData, setFormData] = useState({ name: '' });
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchDepartments();
-  }, []);
-
-  const fetchDepartments = async () => {
+  const fetchDepartments = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('departments')
@@ -43,7 +39,15 @@ export default function DepartmentsPage() {
       setDepartments(data || []);
     }
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void fetchDepartments();
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [fetchDepartments]);
 
   const handleEdit = (dept: Department) => {
     setIsEditing(dept.id);
@@ -80,16 +84,20 @@ export default function DepartmentsPage() {
 
     if (!confirm('Czy na pewno chcesz usunąć ten dział?')) return;
 
-    const actorClient = createActorClient(user);
-    const { error } = await actorClient
-      .from('departments')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      alert(`Błąd podczas usuwania (Code: ${error.code}): ${error.message} \n\nDetails: ${error.details}`);
-    } else {
+    try {
+      await encryptedPost('/api/db/mutate', {
+        table: 'departments',
+        action: 'delete',
+        filters: [{ column: 'id', op: 'eq', value: id }],
+      }, {
+        ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
+        ...(user?.name ? { 'x-employee-name': user.name } : {}),
+        ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+      });
       fetchDepartments();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Wystąpił błąd';
+      alert('Błąd podczas usuwania: ' + message);
     }
   };
 
@@ -104,20 +112,26 @@ export default function DepartmentsPage() {
 
     try {
       if (isAdding) {
-        const actorClient = createActorClient(user);
-        const { error } = await actorClient
-          .from('departments')
-          .insert([{ name: formData.name }]);
-        
-        if (error) throw error;
+        await encryptedPost('/api/db/mutate', {
+          table: 'departments',
+          action: 'insert',
+          values: [{ name: formData.name }],
+        }, {
+          ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
+          ...(user?.name ? { 'x-employee-name': user.name } : {}),
+          ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+        });
       } else if (isEditing) {
-        const actorClient = createActorClient(user);
-        const { error } = await actorClient
-          .from('departments')
-          .update({ name: formData.name })
-          .eq('id', isEditing);
-        
-        if (error) throw error;
+        await encryptedPost('/api/db/mutate', {
+          table: 'departments',
+          action: 'update',
+          values: { name: formData.name },
+          filters: [{ column: 'id', op: 'eq', value: isEditing }],
+        }, {
+          ...(user?.id ? { 'x-employee-id': String(user.id) } : {}),
+          ...(user?.name ? { 'x-employee-name': user.name } : {}),
+          ...(user?.department ? { 'x-employee-department-name': user.department } : {}),
+        });
       }
 
       handleCancel();
