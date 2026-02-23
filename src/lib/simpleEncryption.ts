@@ -115,7 +115,7 @@ export async function encryptSimple(payload: unknown): Promise<SimpleEncryptedPa
   // Importuj klucz AES-256
   const key = await globalThis.crypto.subtle.importKey(
     'raw',
-    keyBuffer,
+    keyBuffer as BufferSource,
     { name: 'AES-GCM' },
     false,
     ['encrypt']

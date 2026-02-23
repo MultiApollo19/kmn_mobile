@@ -49,7 +49,7 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
 };
 
 const toBase64Url = (bytes: Uint8Array): string => {
-  const base64 = arrayBufferToBase64(bytes.buffer);
+  const base64 = arrayBufferToBase64(bytes.buffer as ArrayBuffer);
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 };
 
@@ -63,7 +63,7 @@ const normalizePath = (path: string): string => {
 
 const buildAad = (
   payload: Pick<EncryptedRequestPayload, 'v' | 'alg' | 'kid' | 'ts' | 'requestId' | 'context'>
-): Uint8Array => {
+): BufferSource => {
   return new TextEncoder().encode(
     JSON.stringify({
       v: payload.v,
