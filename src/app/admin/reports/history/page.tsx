@@ -24,6 +24,7 @@ import DateRangePicker from '@/src/components/DateRangePicker';
 
 type VisitSummary = {
   id: number;
+  purpose_id?: number | null;
   entry_time: string;
   exit_time: string | null;
   visitor_name: string;
@@ -73,6 +74,7 @@ export default function HistoryReportPage() {
         .from('visit_history')
         .select(`
           id:visit_id,
+          purpose_id,
           entry_time,
           exit_time,
           visitor_name,
@@ -86,9 +88,6 @@ export default function HistoryReportPage() {
           ),
           is_system_exit,
           exit_employees:employees!visit_history_exit_employee_id_fkey (
-            name
-          ),
-          visit_purposes:visit_purposes!visit_history_purpose_id_fkey (
             name
           ),
           badges:badges!visit_history_badge_id_fkey (
@@ -123,8 +122,41 @@ export default function HistoryReportPage() {
       const { data, error } = await query;
 
       if (error) throw error;
-      
-      const uniqueVisits = data as unknown as VisitSummary[];
+
+      const purposeIds = Array.from(
+        new Set(
+          ((data as Array<{ purpose_id?: number | null }> | null) ?? [])
+            .map((visit) => visit.purpose_id)
+            .filter((id): id is number => typeof id === 'number')
+        )
+      );
+
+      let purposeMap: Record<number, string> = {};
+      if (purposeIds.length > 0) {
+        const { data: purposesData, error: purposesError } = await supabase
+          .from('visit_purposes')
+          .select('id, name')
+          .in('id', purposeIds);
+
+        if (purposesError) {
+          console.error('Error fetching visit purposes:', purposesError);
+        } else {
+          purposeMap = ((purposesData as Array<{ id: number; name: string }> | null) ?? []).reduce<Record<number, string>>(
+            (acc, purpose) => {
+              acc[purpose.id] = purpose.name;
+              return acc;
+            },
+            {}
+          );
+        }
+      }
+
+      const uniqueVisits = ((data as unknown as VisitSummary[]) ?? []).map((visit) => ({
+        ...visit,
+        visit_purposes: visit.purpose_id
+          ? { name: purposeMap[visit.purpose_id] ?? '' }
+          : null,
+      }));
 
       const sortedData = uniqueVisits.sort((a, b) => {
         if (a.exit_time === null && b.exit_time !== null) return -1;

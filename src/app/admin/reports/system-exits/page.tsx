@@ -18,6 +18,7 @@ import DateRangePicker from '@/src/components/DateRangePicker';
 
 type VisitSummary = {
   id: number;
+  purpose_id?: number | null;
   entry_time: string;
   exit_time: string | null;
   visitor_name: string;
@@ -56,6 +57,7 @@ export default function SystemExitsPage() {
         .from('visit_history')
         .select(`
           id:visit_id,
+          purpose_id,
           entry_time,
           exit_time,
           visitor_name,
@@ -65,9 +67,6 @@ export default function SystemExitsPage() {
             departments (
               name
             )
-          ),
-          visit_purposes:visit_purposes!visit_history_purpose_id_fkey (
-            name
           ),
           badges:badges!visit_history_badge_id_fkey (
             badge_number
@@ -101,8 +100,43 @@ export default function SystemExitsPage() {
       const { data, error } = await query;
 
       if (error) throw error;
-      
-      const sortedData = (data as unknown as VisitSummary[]).sort((a, b) => {
+
+      const purposeIds = Array.from(
+        new Set(
+          ((data as Array<{ purpose_id?: number | null }> | null) ?? [])
+            .map((visit) => visit.purpose_id)
+            .filter((id): id is number => typeof id === 'number')
+        )
+      );
+
+      let purposeMap: Record<number, string> = {};
+      if (purposeIds.length > 0) {
+        const { data: purposesData, error: purposesError } = await supabase
+          .from('visit_purposes')
+          .select('id, name')
+          .in('id', purposeIds);
+
+        if (purposesError) {
+          console.error('Error fetching visit purposes:', purposesError);
+        } else {
+          purposeMap = ((purposesData as Array<{ id: number; name: string }> | null) ?? []).reduce<Record<number, string>>(
+            (acc, purpose) => {
+              acc[purpose.id] = purpose.name;
+              return acc;
+            },
+            {}
+          );
+        }
+      }
+
+      const hydratedData = ((data as unknown as VisitSummary[]) ?? []).map((visit) => ({
+        ...visit,
+        visit_purposes: visit.purpose_id
+          ? { name: purposeMap[visit.purpose_id] ?? '' }
+          : null,
+      }));
+
+      const sortedData = hydratedData.sort((a, b) => {
         return new Date(b.entry_time).getTime() - new Date(a.entry_time).getTime();
       });
 
