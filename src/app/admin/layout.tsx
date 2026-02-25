@@ -6,7 +6,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Users, FileText, Settings, Search, LogOut, Loader2, Building2, ClipboardList } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/src/lib/utils';
-import { createActorClient } from '@/src/lib/supabaseActor';
 import NotificationsClient from '@/src/components/NotificationsClient';
 
 type SearchResult = {
@@ -204,18 +203,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setIsSearchLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const client = createActorClient(user);
-        const [employeesRes, departmentsRes, purposesRes, badgesRes] = await Promise.all([
-          client.from('employees').select('id, name').ilike('name', `%${query}%`).limit(5),
-          client.from('departments').select('id, name').ilike('name', `%${query}%`).limit(5),
-          client.from('visit_purposes').select('id, name').ilike('name', `%${query}%`).limit(5),
-          client.from('badges').select('id, badge_number').ilike('badge_number', `%${query}%`).limit(5)
-        ]);
+        const response = await fetch('/api/db/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: 'admin.search',
+            params: { searchTerm: query },
+          }),
+        });
+        
+        if (!response.ok) {
+          setDataResults([]);
+          setIsSearchLoading(false);
+          return;
+        }
+
+        const payload = await response.json() as {
+          employees?: Array<{ id: number; name: string }>;
+          departments?: Array<{ id: number; name: string }>;
+          purposes?: Array<{ id: number; name: string }>;
+          badges?: Array<{ id: number; badge_number: string }>;
+        };
 
         const nextResults: SearchResult[] = [];
 
-        if (employeesRes.data) {
-          nextResults.push(...employeesRes.data.map((employee) => ({
+        if (payload.employees) {
+          nextResults.push(...payload.employees.map((employee) => ({
             id: `employee-${employee.id}`,
             label: employee.name,
             href: `/admin/employees?search=${encodeURIComponent(employee.name)}`,
@@ -224,8 +237,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })));
         }
 
-        if (departmentsRes.data) {
-          nextResults.push(...departmentsRes.data.map((department) => ({
+        if (payload.departments) {
+          nextResults.push(...payload.departments.map((department) => ({
             id: `department-${department.id}`,
             label: department.name,
             href: `/admin/departments?search=${encodeURIComponent(department.name)}`,
@@ -234,8 +247,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })));
         }
 
-        if (purposesRes.data) {
-          nextResults.push(...purposesRes.data.map((purpose) => ({
+        if (payload.purposes) {
+          nextResults.push(...payload.purposes.map((purpose) => ({
             id: `purpose-${purpose.id}`,
             label: purpose.name,
             href: `/admin/settings?tab=purposes&search=${encodeURIComponent(purpose.name)}`,
@@ -244,8 +257,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })));
         }
 
-        if (badgesRes.data) {
-          nextResults.push(...badgesRes.data.map((badge) => ({
+        if (payload.badges) {
+          nextResults.push(...payload.badges.map((badge) => ({
             id: `badge-${badge.id}`,
             label: badge.badge_number,
             href: `/admin/settings?tab=identifiers&search=${encodeURIComponent(badge.badge_number)}`,

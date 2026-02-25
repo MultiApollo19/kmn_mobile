@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/src/lib/supabase';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { 
@@ -18,7 +17,7 @@ import {
   CalendarRange,
   LogOut
 } from 'lucide-react';
-import { format, subDays, startOfDay, endOfDay } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import Image from 'next/image';
 import DateRangePicker from '@/src/components/DateRangePicker';
 
@@ -70,131 +69,21 @@ export default function HistoryReportPage() {
   const fetchHistory = useCallback(async () => {
     setLoading(true);
     try {
-      // Querying the visits table
-      let query = supabase
-        .from('visit_history')
-        .select(`
-          id:visit_id,
-          purpose_id,
-          badge_id,
-          entry_time,
-          exit_time,
-          visitor_name,
-          notes,
-          signature,
-          employees:employees!visit_history_employee_id_fkey (
-            name,
-            departments (
-              name
-            )
-          ),
-          is_system_exit,
-          exit_employees:employees!visit_history_exit_employee_id_fkey (
-            name
-          )
-        `);
-
-      // Date Filtering
-      const now = new Date();
-      
-      if (dateRange === 'today') {
-        const start = startOfDay(now).toISOString();
-        query = query.or(`entry_time.gte.${start},exit_time.gte.${start},exit_time.is.null`);
-      } else if (dateRange === 'yesterday') {
-        const yesterday = subDays(now, 1);
-        const start = startOfDay(yesterday).toISOString();
-        const end = endOfDay(yesterday).toISOString();
-        query = query.or(`and(entry_time.gte.${start},entry_time.lte.${end}),and(exit_time.gte.${start},exit_time.lte.${end})`);
-      } else if (dateRange === 'week') {
-        const start = subDays(now, 7).toISOString();
-        query = query.or(`entry_time.gte.${start},exit_time.gte.${start},exit_time.is.null`);
-      } else if (dateRange === 'custom' && customStart && customEnd) {
-        const s = new Date(customStart);
-        const e = new Date(customEnd);
-        if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
-           const start = startOfDay(s).toISOString();
-           const end = endOfDay(e).toISOString();
-           query = query.or(`and(entry_time.gte.${start},entry_time.lte.${end}),and(exit_time.gte.${start},exit_time.lte.${end})`);
-        }
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      const purposeIds = Array.from(
-        new Set(
-          ((data as Array<{ purpose_id?: number | null }> | null) ?? [])
-            .map((visit) => visit.purpose_id)
-            .filter((id): id is number => typeof id === 'number')
-        )
-      );
-
-      let purposeMap: Record<number, string> = {};
-      if (purposeIds.length > 0) {
-        const { data: purposesData, error: purposesError } = await supabase
-          .from('visit_purposes')
-          .select('id, name')
-          .in('id', purposeIds);
-
-        if (purposesError) {
-          console.error('Error fetching visit purposes:', purposesError);
-        } else {
-          purposeMap = ((purposesData as Array<{ id: number; name: string }> | null) ?? []).reduce<Record<number, string>>(
-            (acc, purpose) => {
-              acc[purpose.id] = purpose.name;
-              return acc;
-            },
-            {}
-          );
-        }
-      }
-
-      const badgeIds = Array.from(
-        new Set(
-          ((data as Array<{ badge_id?: number | null }> | null) ?? [])
-            .map((visit) => visit.badge_id)
-            .filter((id): id is number => typeof id === 'number')
-        )
-      );
-
-      let badgeMap: Record<number, string> = {};
-      if (badgeIds.length > 0) {
-        const { data: badgesData, error: badgesError } = await supabase
-          .from('badges')
-          .select('id, badge_number')
-          .in('id', badgeIds);
-
-        if (badgesError) {
-          console.error('Error fetching badges:', badgesError);
-        } else {
-          badgeMap = ((badgesData as Array<{ id: number; badge_number: string }> | null) ?? []).reduce<Record<number, string>>(
-            (acc, badge) => {
-              acc[badge.id] = badge.badge_number;
-              return acc;
-            },
-            {}
-          );
-        }
-      }
-
-      const uniqueVisits = ((data as unknown as VisitSummary[]) ?? []).map((visit) => ({
-        ...visit,
-        visit_purposes: visit.purpose_id
-          ? { name: purposeMap[visit.purpose_id] ?? '' }
-          : null,
-        badges: visit.badge_id
-          ? { badge_number: badgeMap[visit.badge_id] ?? '' }
-          : null,
-      }));
-
-      const sortedData = uniqueVisits.sort((a, b) => {
-        if (a.exit_time === null && b.exit_time !== null) return -1;
-        if (a.exit_time !== null && b.exit_time === null) return 1;
-        return new Date(b.entry_time).getTime() - new Date(a.entry_time).getTime();
+      const response = await fetch('/api/db/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: 'reports.history',
+          params: {
+            dateRange,
+            customStart,
+            customEnd,
+          },
+        }),
       });
-
-      setVisits(sortedData);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json() as { visits: VisitSummary[] };
+      setVisits(payload.visits || []);
     } catch (error) {
       console.error('Error fetching history:', error);
     } finally {

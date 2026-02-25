@@ -2,10 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, RefreshCw, CalendarRange, Search, SlidersHorizontal } from 'lucide-react';
-import { endOfDay, format, startOfDay, subDays } from 'date-fns';
+import { format } from 'date-fns';
 import { cn } from '@/src/lib/utils';
-import { createActorClient } from '@/src/lib/supabaseActor';
-import { useAuth } from '@/src/hooks/useAuth';
 import DateRangePicker from '@/src/components/DateRangePicker';
 
 type EventLog = {
@@ -105,7 +103,6 @@ function getLevelBadge(level: string) {
 }
 
 export default function AdminLogsPage() {
-  const { user } = useAuth();
   const [logs, setLogs] = useState<EventLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -126,71 +123,38 @@ export default function AdminLogsPage() {
     setLoading(true);
     setError(null);
 
-    const client = createActorClient(user);
-    let query = client
-      .from('event_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (searchTerm.trim()) {
-      const term = `%${searchTerm.trim()}%`;
-      query = query.or(`event_type.ilike.${term},actor_name.ilike.${term}`);
-    }
-    if (eventType.trim()) {
-      query = query.ilike('event_type', `%${eventType.trim()}%`);
-    }
-    if (actorName.trim()) {
-      query = query.ilike('actor_name', `%${actorName.trim()}%`);
-    }
-    if (resourceType) {
-      query = query.eq('resource_type', resourceType);
-    }
-    if (level) {
-      query = query.eq('level', level);
-    }
-    if (category) {
-      if (category === 'other') {
-        query = query.not('event_type', 'ilike', 'auth.%')
-          .not('event_type', 'ilike', 'visit.%')
-          .not('event_type', 'ilike', 'admin.%')
-          .not('event_type', 'ilike', 'system.%');
-      } else {
-        query = query.ilike('event_type', `${category}.%`);
-      }
-    }
-    const now = new Date();
-    if (dateRange === 'today') {
-      const start = startOfDay(now).toISOString();
-      query = query.gte('created_at', start);
-    } else if (dateRange === 'yesterday') {
-      const yesterday = subDays(now, 1);
-      const start = startOfDay(yesterday).toISOString();
-      const end = endOfDay(yesterday).toISOString();
-      query = query.gte('created_at', start).lte('created_at', end);
-    } else if (dateRange === 'week') {
-      const start = subDays(now, 7).toISOString();
-      query = query.gte('created_at', start);
-    } else if (dateRange === 'custom' && customStart && customEnd) {
-      const start = startOfDay(new Date(customStart)).toISOString();
-      const end = endOfDay(new Date(customEnd)).toISOString();
-      query = query.gte('created_at', start).lte('created_at', end);
-    }
-
-    const { data, error: queryError } = await query;
-
-    if (queryError) {
-      setError(queryError.message);
+    try {
+      const response = await fetch('/api/db/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: 'eventLogs.list',
+          params: {
+            dateRange,
+            customStart,
+            customEnd,
+            searchTerm: searchTerm.trim(),
+            eventType: eventType.trim(),
+            actorName: actorName.trim(),
+            resourceType,
+            level,
+            category,
+            limit,
+          },
+        }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json() as { logs: EventLog[] };
+      setLogs(payload.logs || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
       setLogs([]);
-    } else {
-      setLogs((data || []) as EventLog[]);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
-  }, [actorName, category, customEnd, customStart, dateRange, eventType, level, limit, resourceType, searchTerm, user]);
+  }, [actorName, category, customEnd, customStart, dateRange, eventType, level, limit, resourceType, searchTerm]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchLogs();
   }, [fetchLogs]);
 

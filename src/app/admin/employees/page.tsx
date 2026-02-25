@@ -1,8 +1,7 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/src/lib/supabase';
 import { buildActorHeaders } from '@/src/lib/supabaseActor';
 import { useAuth } from '@/src/hooks/useAuth';
 import { hashPinClient } from '@/src/lib/pinHash.client';
@@ -45,59 +44,23 @@ export default function EmployeesPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    
-    // Fetch Employees with Departments
-    const employeesQuery = supabase
-      .from('employees')
-      .select(`
-        id,
-        name,
-        role,
-        department_id,
-        password,
-        departments (
-          id,
-          name
-        )
-      `)
-      .order('name', { ascending: true });
-
-    // Fetch Departments for dropdown
-    const departmentsQuery = supabase
-      .from('departments')
-      .select('id, name')
-      .order('name', { ascending: true });
-
-    const [empRes, deptRes] = await Promise.all([employeesQuery, departmentsQuery]);
-
-    if (empRes.error) console.error('Error fetching employees:', empRes.error);
-    if (deptRes.error) console.error('Error fetching departments:', deptRes.error);
-
-    // Normalize departments field: Supabase may return an array for the joined relation
-    type RawEmployee = {
-      id: number;
-      name: string;
-      password: string | null;
-      department_id: number | null;
-      role: 'user' | 'admin' | 'department_admin';
-      departments?: { id: number; name: string }[] | { id: number; name: string } | null;
-    };
-
-    const normalizedEmployees = (empRes.data || []).map((e: unknown) => {
-      const rec = e as RawEmployee;
-      return {
-        id: rec.id,
-        name: rec.name,
-        password: rec.password,
-        department_id: rec.department_id,
-        role: rec.role,
-        departments: Array.isArray(rec.departments) ? (rec.departments[0] || null) : (rec.departments || null),
-      };
-    });
-
-    setEmployees(normalizedEmployees as Employee[]);
-    setDepartments(deptRes.data || []);
-    setLoading(false);
+    try {
+      const response = await fetch('/api/db/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'employees.list' }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json() as { employees: Employee[]; departments: Department[] };
+      setEmployees(payload.employees || []);
+      setDepartments(payload.departments || []);
+    } catch (error) {
+      console.error('Error fetching employees/departments:', error);
+      setEmployees([]);
+      setDepartments([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -128,7 +91,7 @@ export default function EmployeesPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Czy na pewno chcesz usunąć tego pracownika?')) return;
+    if (!confirm('Czy na pewno chcesz usunÄ…Ä‡ tego pracownika?')) return;
 
     try {
       const deleteRes = await fetch('/api/db/mutate', {
@@ -146,8 +109,8 @@ export default function EmployeesPage() {
       if (!deleteRes.ok) throw new Error(`HTTP ${deleteRes.status}`);
       fetchData();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Wystąpił błąd';
-      alert('Błąd podczas usuwania: ' + message);
+      const message = err instanceof Error ? err.message : 'WystÄ…piĹ‚ bĹ‚Ä…d';
+      alert('BĹ‚Ä…d podczas usuwania: ' + message);
     }
   };
 
@@ -167,7 +130,7 @@ export default function EmployeesPage() {
     }
 
     if (formData.pin && formData.pin.length < 4) {
-        setError('PIN musi mieć co najmniej 4 znaki');
+        setError('PIN musi mieÄ‡ co najmniej 4 znaki');
         return;
     }
 
@@ -193,7 +156,7 @@ export default function EmployeesPage() {
       handleCancel();
       fetchData();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Wystąpił błąd');
+      setError(err instanceof Error ? err.message : 'WystÄ…piĹ‚ bĹ‚Ä…d');
     }
   };
 
@@ -221,7 +184,7 @@ export default function EmployeesPage() {
           </div>
         ) : filteredEmployees.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
-            {searchQuery ? `Brak wyników dla "${searchQuery}".` : 'Brak pracowników. Dodaj pierwszego pracownika.'}
+            {searchQuery ? `Brak wynikĂłw dla "${searchQuery}".` : 'Brak pracownikĂłw. Dodaj pierwszego pracownika.'}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -229,7 +192,7 @@ export default function EmployeesPage() {
               <thead className="bg-muted/30 text-muted-foreground font-semibold border-b border-border">
                 <tr>
                   <th className="px-6 py-4">Pracownik</th>
-                  <th className="px-6 py-4">Dział</th>
+                  <th className="px-6 py-4">DziaĹ‚</th>
                   <th className="px-6 py-4">Rola</th>
                   <th className="px-6 py-4">PIN</th>
                   <th className="px-6 py-4 text-right">Akcje</th>
@@ -262,11 +225,11 @@ export default function EmployeesPage() {
                             {emp.role === 'admin' && <Shield className="w-3 h-3" />}
                             {emp.role === 'department_admin' && <Users className="w-3 h-3" />}
                             {emp.role === 'user' && <User className="w-3 h-3" />}
-                            {emp.role === 'admin' ? 'Administrator' : emp.role === 'department_admin' ? 'Kierownik' : 'Użytkownik'}
+                            {emp.role === 'admin' ? 'Administrator' : emp.role === 'department_admin' ? 'Kierownik' : 'UĹĽytkownik'}
                         </span>
                     </td>
                     <td className="px-6 py-4 font-mono text-muted-foreground">
-                        {emp.password ? '••••' : <span className="text-destructive text-xs">Brak PIN</span>}
+                        {emp.password ? 'â€˘â€˘â€˘â€˘' : <span className="text-destructive text-xs">Brak PIN</span>}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -280,7 +243,7 @@ export default function EmployeesPage() {
                         <button 
                           onClick={() => handleDelete(emp.id)}
                           className="p-2 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition-colors"
-                          title="Usuń"
+                          title="UsuĹ„"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -301,7 +264,7 @@ export default function EmployeesPage() {
       >
         <form onSubmit={handleSave} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Imię i Nazwisko</label>
+            <label className="block text-sm font-medium mb-1">ImiÄ™ i Nazwisko</label>
             <input
               type="text"
               value={formData.name}
@@ -313,28 +276,28 @@ export default function EmployeesPage() {
           
           <div>
             <label className="block text-sm font-medium mb-1">
-              {isAdding ? 'PIN Osobisty' : 'Zmień PIN (opcjonalnie)'}
+              {isAdding ? 'PIN Osobisty' : 'ZmieĹ„ PIN (opcjonalnie)'}
             </label>
             <input
               type="text"
               value={formData.pin}
               onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
               className="w-full bg-muted/50 border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              placeholder={isAdding ? "np. 1234" : "Wpisz nowy PIN aby zmienić"}
+              placeholder={isAdding ? "np. 1234" : "Wpisz nowy PIN aby zmieniÄ‡"}
             />
              <p className="text-xs text-muted-foreground mt-1">
-                 {isAdding ? "Wymagane 4 cyfry." : "Pozostaw puste, aby zachować obecny PIN."}
+                 {isAdding ? "Wymagane 4 cyfry." : "Pozostaw puste, aby zachowaÄ‡ obecny PIN."}
              </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Dział</label>
+            <label className="block text-sm font-medium mb-1">DziaĹ‚</label>
             <select
               value={formData.department_id}
               onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
               className="w-full bg-muted/50 border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             >
-              <option value="">-- Wybierz dział --</option>
+              <option value="">-- Wybierz dziaĹ‚ --</option>
               {departments.map(dept => (
                 <option key={dept.id} value={dept.id}>{dept.name}</option>
               ))}
@@ -348,7 +311,7 @@ export default function EmployeesPage() {
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   className="w-full bg-muted/50 border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               >
-                  <option value="user">Użytkownik</option>
+                  <option value="user">UĹĽytkownik</option>
                   <option value="admin">Administrator Systemu</option>
               </select>
           </div>

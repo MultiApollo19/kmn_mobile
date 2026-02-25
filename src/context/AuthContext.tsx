@@ -1,7 +1,6 @@
-'use client';
+﻿'use client';
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { supabase } from '@/src/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { hashPinClient } from '@/src/lib/pinHash.client';
 
@@ -123,7 +122,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const performLogout = useCallback(async () => {
-    await supabase.auth.signOut().catch(() => {});
     localStorage.removeItem('kmn_auth');
     setUser(null);
     try { router.push('/login'); } catch {}
@@ -237,7 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Restore session from localStorage or Supabase session
+  // Restore session from localStorage
   useEffect(() => {
     const initializeAuth = async () => {
       const storedAuth = getStoredAuth();
@@ -249,25 +247,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      await supabase.auth.getSession();
       setLoading(false);
     };
 
     initializeAuth();
-    
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        const storedAuth = getStoredAuth();
-        if (!storedAuth?.user) {
-          setUser(null);
-          localStorage.removeItem('kmn_auth');
-          clearWarningTimers();
-        }
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, [clearWarningTimers, router, updateSessionTimers]);
 
   useEffect(() => {
@@ -370,70 +353,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const pinHash = await hashPinClient(pin);
 
-    let empData: EmployeeRPCResponse | null = null;
-
-    try {
-      const loginRes = await fetch('/api/auth/verify-pin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pinHash }),
-      });
-      const loginData = await loginRes.json();
-      if (!loginRes.ok) {
-        const message =
-          typeof loginData?.error === 'string'
-            ? loginData.error
-            : typeof loginData?.message === 'string'
-              ? loginData.message
-              : 'Nieprawidłowy PIN';
-
-        const normalized = message.toLowerCase();
-        const shouldFallbackToRpc =
-          loginRes.status >= 500 &&
-          (normalized.includes('fetch failed') || normalized.includes('network'));
-
-        if (!shouldFallbackToRpc) {
-          throw new Error(message);
-        }
-
-        console.warn('verify-pin API unavailable, fallback to direct Supabase RPC');
-      } else {
-        empData = loginData as EmployeeRPCResponse;
-      }
-    } catch (apiErr) {
-      console.warn('verify-pin API error, fallback to direct Supabase RPC', apiErr);
+    const loginRes = await fetch('/api/auth/verify-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pinHash }),
+    });
+    const loginData = await loginRes.json();
+    if (!loginRes.ok) {
+      const message =
+        typeof loginData?.error === 'string'
+          ? loginData.error
+          : typeof loginData?.message === 'string'
+            ? loginData.message
+            : 'Nieprawidłowy PIN';
+      throw new Error(message);
     }
 
-    if (!empData) {
-      const { data, error } = await supabase.rpc('verify_employee_pin', { p_pin_hash: pinHash });
-      if (error) {
-        throw new Error(error.message || 'Nieprawidłowy PIN');
-      }
-      const rows = (data || []) as EmployeeRPCResponse[];
-      empData = rows[0] || null;
-      if (!empData) {
-        throw new Error('Nieprawidłowy PIN');
-      }
-    }
-
-    let userData: UserType | null = null;
-    let authEmail = '';
-    
-    if (empData) {
-      userData = {
-        id: empData.id,
-        name: empData.name,
-        role: empData.role,
-        department: empData.department_name,
-        type: 'employee',
-      };
-      // Use ID in email to be immutable and secure (pin changes won't change email)
-      authEmail = `emp_${empData.id}@kmn.local`;
-    }
-
-    if (!userData || !authEmail) {
-      throw new Error('Nieprawidłowy PIN');
-    }
+    const empData = loginData as EmployeeRPCResponse;
+    const userData: UserType = {
+      id: empData.id,
+      name: empData.name,
+      role: empData.role,
+      department: empData.department_name,
+      type: 'employee',
+    };
 
     try {
       // 4. Success - Update State
@@ -474,8 +417,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     } catch (err) {
       console.error("Auth Error:", err);
-      const message = err instanceof Error ? err.message : 'Nieznany błąd';
-      throw new Error('Błąd autoryzacji: ' + message);
+      const message = err instanceof Error ? err.message : 'Nieznany bĹ‚Ä…d';
+      throw new Error('BĹ‚Ä…d autoryzacji: ' + message);
     }
   };
 
@@ -483,7 +426,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     teardownInactivityTracking();
     clearLogoutTimer();
     clearWarningTimers();
-    await supabase.auth.signOut().catch(() => {});
     localStorage.removeItem('kmn_auth');
     setUser(null);
     router.push('/login');
@@ -514,3 +456,4 @@ export function useAuth() {
   }
   return context;
 }
+

@@ -1,8 +1,7 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/src/lib/supabase';
 import { buildActorHeaders } from '@/src/lib/supabaseActor';
 import { useAuth } from '@/src/hooks/useAuth';
 import { Plus, Trash2, Edit2, Save, X, Loader2, Building2 } from 'lucide-react';
@@ -28,17 +27,20 @@ export default function DepartmentsPage() {
 
   const fetchDepartments = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('departments')
-      .select('*')
-      .order('id', { ascending: true });
-    
-    if (error) {
+    try {
+      const response = await fetch('/api/db/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'departments.list' }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json() as { departments: Department[] };
+      setDepartments(payload.departments || []);
+    } catch (error) {
       console.error('Error fetching departments:', error);
-    } else {
-      setDepartments(data || []);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -65,24 +67,26 @@ export default function DepartmentsPage() {
 
   const handleDelete = async (id: number) => {
     // Check for assigned employees first
-    const { data: employees, error: checkError } = await supabase
-      .from('employees')
-      .select('name')
-      .eq('department_id', id);
-
-    if (checkError) {
-      alert('Błąd podczas sprawdzania powiązań: ' + checkError.message);
+    const checkResponse = await fetch('/api/db/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: 'departments.employees', params: { departmentId: id } }),
+    });
+    if (!checkResponse.ok) {
+      alert('Błąd podczas sprawdzania powiązań: HTTP ' + checkResponse.status);
       return;
     }
+    const checkPayload = await checkResponse.json() as { employees: Array<{ name: string }> };
+    const employees = checkPayload.employees || [];
 
     if (employees && employees.length > 0) {
       const names = employees.map(e => e.name).slice(0, 5).join(', ');
       const more = employees.length > 5 ? ` i ${employees.length - 5} innych` : '';
-      alert(`Nie można usunąć działu. Przypisani pracownicy: ${names}${more}. Musisz ich najpierw przenieść lub usunąć.`);
+      alert(`Nie moĹĽna usunÄ…Ä‡ dziaĹ‚u. Przypisani pracownicy: ${names}${more}. Musisz ich najpierw przenieĹ›Ä‡ lub usunÄ…Ä‡.`);
       return;
     }
 
-    if (!confirm('Czy na pewno chcesz usunąć ten dział?')) return;
+    if (!confirm('Czy na pewno chcesz usunÄ…Ä‡ ten dziaĹ‚?')) return;
 
     try {
       const response = await fetch('/api/db/mutate', {
@@ -100,8 +104,8 @@ export default function DepartmentsPage() {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       fetchDepartments();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Wystąpił błąd';
-      alert('Błąd podczas usuwania: ' + message);
+      const message = err instanceof Error ? err.message : 'WystÄ…piĹ‚ bĹ‚Ä…d';
+      alert('BĹ‚Ä…d podczas usuwania: ' + message);
     }
   };
 
@@ -110,7 +114,7 @@ export default function DepartmentsPage() {
     setError(null);
 
     if (!formData.name) {
-      setError('Nazwa działu jest wymagana');
+      setError('Nazwa dziaĹ‚u jest wymagana');
       return;
     }
 
@@ -149,7 +153,7 @@ export default function DepartmentsPage() {
       handleCancel();
       fetchDepartments();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Wystąpił błąd';
+      const message = err instanceof Error ? err.message : 'WystÄ…piĹ‚ bĹ‚Ä…d';
       setError(message);
     }
   };
@@ -167,7 +171,7 @@ export default function DepartmentsPage() {
           className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg transition-colors font-medium shadow-sm"
         >
           <Plus size={18} />
-          Dodaj dział
+          Dodaj dziaĹ‚
         </button>
       </div>
 
@@ -178,7 +182,7 @@ export default function DepartmentsPage() {
           </div>
         ) : filteredDepartments.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
-            {searchQuery ? `Brak wyników dla "${searchQuery}".` : 'Brak zdefiniowanych działów. Dodaj pierwszy dział.'}
+            {searchQuery ? `Brak wynikĂłw dla "${searchQuery}".` : 'Brak zdefiniowanych dziaĹ‚Ăłw. Dodaj pierwszy dziaĹ‚.'}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -208,7 +212,7 @@ export default function DepartmentsPage() {
                         <button 
                           onClick={() => handleDelete(dept.id)}
                           className="p-2 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition-colors"
-                          title="Usuń"
+                          title="UsuĹ„"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -225,11 +229,11 @@ export default function DepartmentsPage() {
       <Modal
         isOpen={isAdding || isEditing !== null}
         onClose={handleCancel}
-        title={isAdding ? 'Dodaj nowy dział' : 'Edytuj dział'}
+        title={isAdding ? 'Dodaj nowy dziaĹ‚' : 'Edytuj dziaĹ‚'}
       >
         <form onSubmit={handleSave} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Nazwa działu</label>
+            <label className="block text-sm font-medium mb-1">Nazwa dziaĹ‚u</label>
             <input
               type="text"
               value={formData.name}

@@ -1,16 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
+import { pgQuery } from '@/src/lib/postgres';
 
 export const runtime = 'nodejs';
-
-const decodeActorHeader = (value: string | null) => {
-  if (!value) return null;
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-};
 
 type FilterOp = 'eq' | 'is' | 'gte' | 'lt';
 
@@ -38,28 +29,33 @@ const ALLOWED_TABLES = new Set([
   'employees',
 ]);
 
-function applyFilters<
-  T extends {
-    eq: (column: string, value: unknown) => T;
-    is: (column: string, value: unknown) => T;
-    gte: (column: string, value: unknown) => T;
-    lt: (column: string, value: unknown) => T;
-  },
->(
-  query: T,
-  filters: MutationFilter[] = []
-) {
-  let current = query;
+const IDENTIFIER_REGEX = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
-  for (const filter of filters) {
-    if (filter.op === 'eq') current = current.eq(filter.column, filter.value);
-    if (filter.op === 'is') current = current.is(filter.column, filter.value);
-    if (filter.op === 'gte') current = current.gte(filter.column, filter.value);
-    if (filter.op === 'lt') current = current.lt(filter.column, filter.value);
+const quoteIdent = (identifier: string) => {
+  if (!IDENTIFIER_REGEX.test(identifier)) {
+    throw new Error(`Nieprawidłowy identyfikator: ${identifier}`);
   }
+  return `"${identifier}"`;
+};
 
-  return current;
-}
+const buildWhereClause = (filters: MutationFilter[] = [], values: unknown[]) => {
+  if (!filters.length) return '';
+
+  const conditions = filters.map((filter) => {
+    const col = quoteIdent(filter.column);
+    if (filter.op === 'is') {
+      return filter.value === null ? `${col} IS NULL` : `${col} IS NOT NULL`;
+    }
+
+    values.push(filter.value);
+    const idx = values.length;
+    if (filter.op === 'eq') return `${col} = $${idx}`;
+    if (filter.op === 'gte') return `${col} >= $${idx}`;
+    return `${col} < $${idx}`;
+  });
+
+  return ` WHERE ${conditions.join(' AND ')}`;
+};
 
 export async function POST(request: Request) {
   try {
@@ -70,51 +66,62 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Tabela nie jest dozwolona' }, { status: 400 });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Brak konfiguracji Supabase (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY)');
-    }
-
-    const authHeader = request.headers.get('Authorization');
-    const actorHeaders: Record<string, string> = {};
-    const actorId = request.headers.get('x-employee-id');
-    const actorName = decodeActorHeader(request.headers.get('x-employee-name'));
-    const actorDeptName = decodeActorHeader(request.headers.get('x-employee-department-name'));
-    if (actorId) actorHeaders['x-employee-id'] = actorId;
-    if (actorName) actorHeaders['x-employee-name'] = actorName;
-    if (actorDeptName) actorHeaders['x-employee-department-name'] = actorDeptName;
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: authHeader || '',
-          ...actorHeaders,
-        },
-      },
-    });
+    const tableName = quoteIdent(table);
 
     if (action === 'insert') {
       if (!values) return NextResponse.json({ error: 'Brak values dla insert' }, { status: 400 });
-      const { error } = await supabase.from(table).insert(values);
-      if (error) throw error;
+
+      const rows = Array.isArray(values) ? values : [values];
+      if (!rows.length) return NextResponse.json({ error: 'Puste values dla insert' }, { status: 400 });
+
+      const columns = Object.keys(rows[0]);
+      if (!columns.length) return NextResponse.json({ error: 'Brak kolumn dla insert' }, { status: 400 });
+
+      const sqlValues: unknown[] = [];
+      const valueTuples = rows.map((row) => {
+        const placeholders = columns.map((column) => {
+          sqlValues.push((row as Record<string, unknown>)[column]);
+          return `$${sqlValues.length}`;
+        });
+        return `(${placeholders.join(', ')})`;
+      });
+
+      const columnSql = columns.map((column) => quoteIdent(column)).join(', ');
+      await pgQuery(
+        `INSERT INTO public.${tableName} (${columnSql}) VALUES ${valueTuples.join(', ')}`,
+        sqlValues
+      );
+
       return NextResponse.json({ success: true });
     }
 
     if (action === 'update') {
       if (!values) return NextResponse.json({ error: 'Brak values dla update' }, { status: 400 });
-      const query = supabase.from(table).update(values);
-      const filtered = applyFilters(query, filters);
-      const { error } = await filtered;
-      if (error) throw error;
+
+      const entries = Object.entries(values);
+      if (!entries.length) return NextResponse.json({ error: 'Brak pól do update' }, { status: 400 });
+
+      const sqlValues: unknown[] = [];
+      const setSql = entries
+        .map(([column, value]) => {
+          sqlValues.push(value);
+          return `${quoteIdent(column)} = $${sqlValues.length}`;
+        })
+        .join(', ');
+
+      const whereSql = buildWhereClause(filters, sqlValues);
+      await pgQuery(
+        `UPDATE public.${tableName} SET ${setSql}${whereSql}`,
+        sqlValues
+      );
+
       return NextResponse.json({ success: true });
     }
 
-    const query = supabase.from(table).delete();
-    const filtered = applyFilters(query, filters);
-    const { error } = await filtered;
-    if (error) throw error;
+    const sqlValues: unknown[] = [];
+    const whereSql = buildWhereClause(filters, sqlValues);
+    await pgQuery(`DELETE FROM public.${tableName}${whereSql}`, sqlValues);
+
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error('DB mutate API Error:', error);

@@ -1,8 +1,7 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/src/lib/supabase';
 import { Loader2, Plus, Trash2, Edit2, Check, X, AlertCircle, Shield, Settings as SettingsIcon, Flag } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useAuth } from '@/src/hooks/useAuth';
@@ -54,16 +53,15 @@ export default function AdminSettingsClient() {
     setLoading(true);
     setError(null);
     try {
-      const [purposesRes, badgesRes] = await Promise.all([
-        supabase.from('visit_purposes').select('*').order('name'),
-        supabase.from('badges').select('*').order('badge_number')
-      ]);
-
-      if (purposesRes.error) throw purposesRes.error;
-      if (badgesRes.error) throw badgesRes.error;
-
-      setPurposes(purposesRes.data || []);
-      setBadges(badgesRes.data || []);
+      const response = await fetch('/api/db/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'settings.data' }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json() as { purposes: VisitPurpose[]; badges: Badge[] };
+      setPurposes(payload.purposes || []);
+      setBadges(payload.badges || []);
     } catch (err) {
       console.error('Error loading settings data:', err);
       setError('Nie udało się załadować danych ustawień');
@@ -101,11 +99,11 @@ export default function AdminSettingsClient() {
 
       await loadData();
       setNewPurpose('');
-      setSuccess('Cel wizyty dodany pomyślnie');
+      setSuccess('Cel wizyty dodany pomyĹ›lnie');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error('Error adding purpose:', err);
-      setError('Nie udało się dodać celu wizyty');
+      setError('Nie udaĹ‚o siÄ™ dodaÄ‡ celu wizyty');
     }
   };
 
@@ -130,11 +128,11 @@ export default function AdminSettingsClient() {
       await loadData();
       setEditingId(null);
       setEditingName('');
-      setSuccess('Cel wizyty zaktualizowany pomyślnie');
+      setSuccess('Cel wizyty zaktualizowany pomyĹ›lnie');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error('Error updating purpose:', err);
-      setError('Nie udało się zaktualizować celu wizyty');
+      setError('Nie udaĹ‚o siÄ™ zaktualizowaÄ‡ celu wizyty');
     } finally {
       setSavingId(null);
     }
@@ -142,7 +140,7 @@ export default function AdminSettingsClient() {
 
   // Delete Purpose
   const handleDeletePurpose = async (id: number) => {
-    if (!confirm('Na pewno chcesz usunąć ten cel wizyty?')) return;
+    if (!confirm('Na pewno chcesz usunÄ…Ä‡ ten cel wizyty?')) return;
     
     try {
       const response = await fetch('/api/db/mutate', {
@@ -157,11 +155,11 @@ export default function AdminSettingsClient() {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       await loadData();
-      setSuccess('Cel wizyty usunięty pomyślnie');
+      setSuccess('Cel wizyty usuniÄ™ty pomyĹ›lnie');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error('Error deleting purpose:', err);
-      setError('Nie udało się usunąć celu wizyty');
+      setError('Nie udaĹ‚o siÄ™ usunÄ…Ä‡ celu wizyty');
     }
   };
 
@@ -184,11 +182,11 @@ export default function AdminSettingsClient() {
 
       await loadData();
       setNewBadgeNumber('');
-      setSuccess('Identyfikator dodany pomyślnie');
+      setSuccess('Identyfikator dodany pomyĹ›lnie');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error('Error adding badge:', err);
-      setError('Nie udało się dodać identyfikatora');
+      setError('Nie udaĹ‚o siÄ™ dodaÄ‡ identyfikatora');
     } finally {
       setAddingBadge(false);
     }
@@ -210,17 +208,17 @@ export default function AdminSettingsClient() {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       await loadData();
-      setSuccess(`Identyfikator ${!currentStatus ? 'aktywowany' : 'deaktywowany'} pomyślnie`);
+      setSuccess(`Identyfikator ${!currentStatus ? 'aktywowany' : 'deaktywowany'} pomyĹ›lnie`);
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error('Error toggling badge:', err);
-      setError('Nie udało się zmienić statusu identyfikatora');
+      setError('Nie udaĹ‚o siÄ™ zmieniÄ‡ statusu identyfikatora');
     }
   };
 
   // Delete Badge
   const handleDeleteBadge = async (id: number) => {
-    if (!confirm('Na pewno chcesz usunąć ten identyfikator?')) return;
+    if (!confirm('Na pewno chcesz usunÄ…Ä‡ ten identyfikator?')) return;
     
     try {
       const response = await fetch('/api/db/mutate', {
@@ -235,11 +233,11 @@ export default function AdminSettingsClient() {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       await loadData();
-      setSuccess('Identyfikator usunięty pomyślnie');
+      setSuccess('Identyfikator usuniÄ™ty pomyĹ›lnie');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error('Error deleting badge:', err);
-      setError('Nie udało się usunąć identyfikatora');
+      setError('Nie udaĹ‚o siÄ™ usunÄ…Ä‡ identyfikatora');
     }
   };
 
@@ -272,7 +270,7 @@ export default function AdminSettingsClient() {
         <div className="bg-destructive/10 border border-destructive text-destructive rounded-lg p-4 flex items-gap gap-3">
           <AlertCircle size={20} className="shrink-0 mt-0.5" />
           <div>
-            <p className="font-medium">Błąd</p>
+            <p className="font-medium">BĹ‚Ä…d</p>
             <p className="text-sm">{error}</p>
           </div>
           <button onClick={() => setError(null)} className="ml-auto">
@@ -304,7 +302,7 @@ export default function AdminSettingsClient() {
         >
           <div className="flex items-center gap-2">
             <SettingsIcon size={18} />
-            Ogólne
+            OgĂłlne
           </div>
         </button>
         <button
@@ -343,7 +341,7 @@ export default function AdminSettingsClient() {
         {activeTab === 'general' && (
           <div className="space-y-6">
             <div className="bg-card rounded-xl border border-border p-6">
-              <h2 className="text-xl font-bold mb-4">Informacje użytkownika</h2>
+              <h2 className="text-xl font-bold mb-4">Informacje uĹĽytkownika</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-2">Nazwa</label>
@@ -354,7 +352,7 @@ export default function AdminSettingsClient() {
                   <div className="p-3 bg-muted rounded-lg">{user?.role === 'admin' ? 'Administrator' : 'Kierownik'}</div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">Dział</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-2">DziaĹ‚</label>
                   <div className="p-3 bg-muted rounded-lg">{user?.department || '-'}</div>
                 </div>
               </div>
@@ -367,7 +365,7 @@ export default function AdminSettingsClient() {
           <div className="space-y-6">
             <div className="bg-card rounded-xl border border-border p-6">
               <h2 className="text-xl font-bold mb-4">Cele wizyt</h2>
-              <p className="text-muted-foreground mb-6 text-sm">Zarządzaj dostępnymi celami dla wizyt interesantów</p>
+              <p className="text-muted-foreground mb-6 text-sm">ZarzÄ…dzaj dostÄ™pnymi celami dla wizyt interesantĂłw</p>
               
               {/* Add New Purpose */}
               <div className="flex gap-2 mb-6">
@@ -392,7 +390,7 @@ export default function AdminSettingsClient() {
               {/* Purposes List */}
               {filteredPurposes.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">
-                  {searchQuery ? `Brak wyników dla "${searchQuery}".` : 'Brak celów wizyt. Dodaj pierwszy!'}
+                  {searchQuery ? `Brak wynikĂłw dla "${searchQuery}".` : 'Brak celĂłw wizyt. Dodaj pierwszy!'}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -452,8 +450,8 @@ export default function AdminSettingsClient() {
         {activeTab === 'identifiers' && (
           <div className="space-y-6">
             <div className="bg-card rounded-xl border border-border p-6">
-              <h2 className="text-xl font-bold mb-4">Zarządzanie identyfikatorami</h2>
-              <p className="text-muted-foreground mb-6 text-sm">Dodawaj i usuwaj identyfikatory dla interesantów</p>
+              <h2 className="text-xl font-bold mb-4">ZarzÄ…dzanie identyfikatorami</h2>
+              <p className="text-muted-foreground mb-6 text-sm">Dodawaj i usuwaj identyfikatory dla interesantĂłw</p>
               
               {/* Add New Badge */}
               <div className="flex gap-2 mb-6">
@@ -482,7 +480,7 @@ export default function AdminSettingsClient() {
               {/* Badges List */}
               {filteredBadges.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">
-                  {searchQuery ? `Brak wyników dla "${searchQuery}".` : 'Brak identyfikatorów. Dodaj pierwszy!'}
+                  {searchQuery ? `Brak wynikĂłw dla "${searchQuery}".` : 'Brak identyfikatorĂłw. Dodaj pierwszy!'}
                 </p>
               ) : (
                 <div className="space-y-2">

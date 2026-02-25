@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Bell, Loader2 } from 'lucide-react';
-import { createActorClient } from '@/src/lib/supabaseActor';
-import { useAuth } from '@/src/hooks/useAuth';
 import { cn } from '@/src/lib/utils';
 
 type EventLog = {
@@ -78,7 +76,6 @@ function getLevelBadge(level: string) {
 }
 
 export default function NotificationsClient() {
-	const { user } = useAuth();
 	const [isOpen, setIsOpen] = useState(false);
 	const [items, setItems] = useState<EventLog[]>([]);
 	const [loading, setLoading] = useState(false);
@@ -89,45 +86,46 @@ export default function NotificationsClient() {
 	const sinceIso = useMemo(() => new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), []);
 
 	const fetchAlerts = useCallback(async () => {
-		if (!user) return;
-		const client = createActorClient(user);
-
 		try {
-			const { count, error: countError } = await client
-				.from('event_logs')
-				.select('id', { count: 'exact', head: true })
-				.gte('created_at', sinceIso)
-				.in('level', ['warn', 'error']);
-
-			if (countError) throw countError;
-			setAlertCount(count ?? 0);
+			const response = await fetch('/api/db/query', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					query: 'eventLogs.alertCount',
+					params: { since: sinceIso },
+				}),
+			});
+			if (!response.ok) throw new Error(`HTTP ${response.status}`);
+			const payload = await response.json() as { count: number };
+			setAlertCount(payload.count ?? 0);
 		} catch {
 			setAlertCount(0);
 		}
-	}, [sinceIso, user]);
+	}, [sinceIso]);
 
 	const fetchItems = useCallback(async () => {
-		if (!user) return;
 		setLoading(true);
 		setError(null);
-		const client = createActorClient(user);
 
 		try {
-			const { data, error: queryError } = await client
-				.from('event_logs')
-				.select('*')
-				.order('created_at', { ascending: false })
-				.limit(8);
-
-			if (queryError) throw queryError;
-			setItems((data || []) as EventLog[]);
+			const response = await fetch('/api/db/query', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					query: 'eventLogs.latest',
+					params: { limit: 8 },
+				}),
+			});
+			if (!response.ok) throw new Error(`HTTP ${response.status}`);
+			const payload = await response.json() as { logs: EventLog[] };
+			setItems(payload.logs || []);
 		} catch {
 			setError('Nie udało się pobrać zdarzeń.');
 			setItems([]);
 		} finally {
 			setLoading(false);
 		}
-	}, [user]);
+	}, []);
 
 	useEffect(() => {
 		void fetchAlerts();

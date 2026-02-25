@@ -1,6 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
 import { compare } from 'bcryptjs';
 import { NextResponse } from 'next/server';
+import { pgQuery } from '@/src/lib/postgres';
 
 export const runtime = 'nodejs';
 
@@ -13,13 +13,7 @@ type EmployeeRow = {
   name: string;
   role: 'user' | 'admin' | 'department_admin';
   password: string | null;
-  departments: { name: string } | { name: string }[] | null;
-};
-
-const normalizeDepartment = (value: EmployeeRow['departments']) => {
-  if (!value) return '';
-  if (Array.isArray(value)) return value[0]?.name || '';
-  return value.name || '';
+  department_name: string | null;
 };
 
 type ErrorCauseDiagnostics = {
@@ -63,24 +57,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Nieprawidłowy PIN' }, { status: 400 });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const result = await pgQuery<EmployeeRow>(
+      `SELECT e.id, e.name, e.role, e.password, d.name AS department_name
+       FROM public.employees e
+       LEFT JOIN public.departments d ON d.id = e.department_id`
+    );
 
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Brak konfiguracji Supabase (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY)');
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-    const { data, error } = await supabase
-      .from('employees')
-      .select('id, name, role, password, departments(name)');
-
-    if (error) {
-      throw error;
-    }
-
-    const employees = (data || []) as EmployeeRow[];
+    const employees = result.rows;
     for (const employee of employees) {
       const hash = employee.password;
       if (!hash) continue;
@@ -92,7 +75,7 @@ export async function POST(request: Request) {
         id: employee.id,
         name: employee.name,
         role: employee.role,
-        department_name: normalizeDepartment(employee.departments),
+        department_name: employee.department_name || '',
       });
     }
 

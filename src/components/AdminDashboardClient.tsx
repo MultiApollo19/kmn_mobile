@@ -1,7 +1,6 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/src/lib/supabase';
 import { Loader2, Clock, FileText, X, User, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -56,101 +55,17 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Fetch Active Visits (Detailed)
-      const activeQuery = supabase
-        .from('visits')
-        .select(`
-          id,
-          entry_time,
-          exit_time,
-          visitor_name,
-          notes,
-          employees:employees!visits_employee_id_fkey (
-            name,
-            departments (
-              name
-            )
-          ),
-          visit_purposes (
-            name
-          ),
-          badges (
-            badge_number
-          )
-        `)
-        .is('exit_time', null)
-        .order('entry_time', { ascending: false });
-
-      // 2. Fetch Stats
-      const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      
-      const todayStatsQuery = supabase
-        .from('visit_history')
-        .select('visit_id, entry_time, exit_time')
-        .gte('entry_time', startOfDay);
-
-      const totalStatsQuery = supabase
-        .from('visit_history')
-        .select('entry_time, exit_time')
-        .not('exit_time', 'is', null);
-
-      const [activeRes, todayStatsRes, totalStatsRes] = await Promise.all([
-        activeQuery, 
-        todayStatsQuery, 
-        totalStatsQuery
-      ]);
-
-      if (activeRes.error) {
-        console.error('Active Query Error:', activeRes.error);
-        throw activeRes.error;
-      }
-      if (todayStatsRes.error) {
-        console.error('Today Stats Query Error:', todayStatsRes.error);
-        throw todayStatsRes.error;
-      }
-      if (totalStatsRes.error) {
-        console.error('Total Stats Query Error:', totalStatsRes.error);
-        throw totalStatsRes.error;
-      }
-
-      const activeVisits = activeRes.data;
-      
-      // Deduplicate history for Today's Stats
-      const todayVisits = todayStatsRes.data || [];
-      
-      const totalVisits = totalStatsRes.data;
-
-      // Calculate Stats
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const calculateAvg = (data: any[]) => {
-        const completed = data.filter(v => v.exit_time);
-        if (completed.length === 0) return '-';
-
-        const totalDurationMs = completed.reduce((acc, v) => {
-          const start = new Date(v.entry_time).getTime();
-          const end = new Date(v.exit_time!).getTime();
-          return acc + (end - start);
-        }, 0);
-        
-        const avgMs = totalDurationMs / completed.length;
-        const avgMinutes = Math.round(avgMs / 1000 / 60);
-
-        if (avgMinutes < 60) {
-          return `${avgMinutes} min`;
-        }
-        const h = Math.floor(avgMinutes / 60);
-        const m = avgMinutes % 60;
-        return `${h}h ${m}m`;
-      };
-
-      setVisits(activeVisits as unknown as Visit[]);
-      setStats({
-        active: activeVisits.length,
-        todayVisits: todayVisits.length,
-        todayAvgTime: calculateAvg(todayVisits),
-        totalAvgTime: calculateAvg(totalVisits)
+      const response = await fetch('/api/db/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'dashboard.summary' }),
       });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const payload = await response.json() as { visits: Visit[]; stats: DashboardStats };
+      setVisits(payload.visits || []);
+      setStats(payload.stats || { active: 0, todayVisits: 0, todayAvgTime: '-', totalAvgTime: '-' });
 
     } catch (error) {
       console.error('Error fetching visits full details:', JSON.stringify(error, null, 2));
@@ -172,23 +87,6 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
   }, [fetchDashboardData]);
 
   useEffect(() => {
-    const channel = supabase
-      .channel('admin-dashboard-visits')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'visits' },
-        () => {
-          void fetchDashboardData();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [fetchDashboardData]);
-
-  useEffect(() => {
     if (!selectedVisit) {
       setVisitSignature(null);
       return;
@@ -197,14 +95,14 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
     const fetchSignature = async () => {
       setLoadingSignature(true);
       try {
-        const { data, error } = await supabase
-          .from('visits')
-          .select('signature')
-          .eq('id', selectedVisit.id)
-          .single();
-
-        if (error) throw error;
-        setVisitSignature(data.signature ?? null);
+        const response = await fetch('/api/db/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: 'visit.signature', params: { visitId: selectedVisit.id } }),
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json() as { signature: string | null };
+        setVisitSignature(payload.signature ?? null);
       } catch (err) {
         console.error('Error fetching signature:', err);
         setVisitSignature(null);
@@ -233,8 +131,8 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard title="Obecnie w firmie" value={stats.active.toString()} change="" neutral />
           <StatCard title="Dzisiejsze wizyty" value={stats.todayVisits.toString()} change="" neutral />
-          <StatCard title="Średni czas wizyty (dziś)" value={stats.todayAvgTime} change="" neutral />
-          <StatCard title="Średni czas wizyty (ogółem)" value={stats.totalAvgTime} change="" neutral />
+          <StatCard title="Ĺšredni czas wizyty (dziĹ›)" value={stats.todayAvgTime} change="" neutral />
+          <StatCard title="Ĺšredni czas wizyty (ogĂłĹ‚em)" value={stats.totalAvgTime} change="" neutral />
         </div>
       )}
 
@@ -243,15 +141,15 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
         <div className="px-6 py-5 border-b border-border flex justify-between items-center bg-muted/10">
           <div>
             <h3 className="font-bold text-xl text-foreground">Aktywne wizyty</h3>
-            <p className="text-sm text-muted-foreground mt-1">Osoby przebywające obecnie na terenie zakładu</p>
+            <p className="text-sm text-muted-foreground mt-1">Osoby przebywajÄ…ce obecnie na terenie zakĹ‚adu</p>
           </div>
           <button 
             onClick={fetchDashboardData}
             className="flex items-center gap-2 px-4 py-2 hover:bg-muted rounded-full transition-colors text-sm font-medium text-muted-foreground hover:text-foreground"
-            title="Odśwież"
+            title="OdĹ›wieĹĽ"
           >
             <Clock className="w-4 h-4" />
-            Odśwież
+            OdĹ›wieĹĽ
           </button>
         </div>
 
@@ -276,9 +174,9 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
             <table className="w-full text-sm text-left">
               <thead className="bg-muted/30 text-muted-foreground font-semibold border-b border-border">
                 <tr>
-                  <th className="px-4 py-4 min-w-35">Czas wejścia</th>
+                  <th className="px-4 py-4 min-w-35">Czas wejĹ›cia</th>
                   <th className="px-4 py-4 min-w-50">Interesant</th>
-                  <th className="px-4 py-4 min-w-50">Osoba przyjmująca</th>
+                  <th className="px-4 py-4 min-w-50">Osoba przyjmujÄ…ca</th>
                   <th className="px-4 py-4 min-w-37.5">Cel wizyty</th>
                   <th className="px-4 py-4 min-w-30">Identyfikator</th>
                   <th className="px-4 py-4">Uwagi</th>
@@ -352,7 +250,7 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
                   <FileText className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Szczegóły wizyty</h2>
+                  <h2 className="text-lg font-bold text-slate-900">SzczegĂłĹ‚y wizyty</h2>
                 </div>
               </div>
               <button
@@ -372,7 +270,7 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
                   </div>
 
                   <div>
-                    <div className="text-xs text-slate-400 mb-1">Imię i nazwisko</div>
+                    <div className="text-xs text-slate-400 mb-1">ImiÄ™ i nazwisko</div>
                     <div className="text-xl font-bold text-slate-900 leading-tight">{selectedVisit.visitor_name}</div>
                   </div>
 
@@ -409,12 +307,12 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
 
                   <div className="grid grid-cols-2 gap-6">
                     <div>
-                      <div className="text-xs text-slate-400 mb-1">Wejście</div>
+                      <div className="text-xs text-slate-400 mb-1">WejĹ›cie</div>
                       <div className="text-2xl font-bold text-slate-900">{format(new Date(selectedVisit.entry_time), 'HH:mm')}</div>
                       <div className="text-xs text-slate-500">{format(new Date(selectedVisit.entry_time), 'dd.MM.yyyy')}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-slate-400 mb-1">Wyjście</div>
+                      <div className="text-xs text-slate-400 mb-1">WyjĹ›cie</div>
                       {selectedVisit.exit_time ? (
                         <>
                           <div className="text-2xl font-bold text-slate-900">{format(new Date(selectedVisit.exit_time), 'HH:mm')}</div>
@@ -427,7 +325,7 @@ export default function AdminDashboardClient({ initialData }: AdminDashboardClie
                   </div>
 
                   <div className="pt-4 border-t border-slate-100">
-                    <div className="text-xs text-slate-400 mb-1">Całkowity czas</div>
+                    <div className="text-xs text-slate-400 mb-1">CaĹ‚kowity czas</div>
                     <div className="text-lg font-medium text-slate-700">
                       {selectedVisit.exit_time
                         ? `${Math.floor((new Date(selectedVisit.exit_time).getTime() - new Date(selectedVisit.entry_time).getTime()) / 60000)} min`
