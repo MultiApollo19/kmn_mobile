@@ -1,6 +1,5 @@
-import { compare } from 'bcryptjs';
 import { NextResponse } from 'next/server';
-import { pgQuery } from '@/src/lib/postgres';
+import { logPostgresConnectionCheck, pgQuery } from '@/src/lib/postgres';
 
 export const runtime = 'nodejs';
 
@@ -9,10 +8,9 @@ type VerifyPinBody = {
 };
 
 type EmployeeRow = {
-  id: number;
+  id: string | number;
   name: string;
   role: 'user' | 'admin' | 'department_admin';
-  password: string | null;
   department_name: string | null;
 };
 
@@ -57,20 +55,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Nieprawidłowy PIN' }, { status: 400 });
     }
 
+    await logPostgresConnectionCheck('auth.verify-pin.preflight');
+
     const result = await pgQuery<EmployeeRow>(
-      `SELECT e.id, e.name, e.role, e.password, d.name AS department_name
-       FROM public.employees e
-       LEFT JOIN public.departments d ON d.id = e.department_id`
+      `SELECT id, name, role, department_name
+       FROM public.verify_employee_pin($1)
+       LIMIT 1`,
+      [pinHash]
     );
 
-    const employees = result.rows;
-    for (const employee of employees) {
-      const hash = employee.password;
-      if (!hash) continue;
-
-      const isValid = await compare(pinHash, hash);
-      if (!isValid) continue;
-
+    const employee = result.rows[0];
+    if (employee) {
       return NextResponse.json({
         id: employee.id,
         name: employee.name,
@@ -79,8 +74,34 @@ export async function POST(request: Request) {
       });
     }
 
+    const legacyResult = await pgQuery<EmployeeRow>(
+      `SELECT e.id, e.name, e.role, d.name AS department_name
+       FROM public.employees e
+       LEFT JOIN public.departments d ON d.id = e.department_id
+       WHERE e.password ~* '^[a-f0-9]{64}$'
+         AND lower(e.password) = lower($1)
+       LIMIT 1`,
+      [pinHash]
+    );
+
+    const legacyEmployee = legacyResult.rows[0];
+    if (legacyEmployee) {
+      console.warn('Verify PIN legacy hash match', {
+        employeeId: legacyEmployee.id,
+        role: legacyEmployee.role,
+      });
+
+      return NextResponse.json({
+        id: legacyEmployee.id,
+        name: legacyEmployee.name,
+        role: legacyEmployee.role,
+        department_name: legacyEmployee.department_name || '',
+      });
+    }
+
     return NextResponse.json({ error: 'Nieprawidłowy PIN' }, { status: 401 });
   } catch (error: unknown) {
+    await logPostgresConnectionCheck('auth.verify-pin.catch', { force: true });
     console.error('Verify PIN API Error:', error);
     const err = error as { message?: string };
     const diagnostics = getErrorCauseDiagnostics(error);

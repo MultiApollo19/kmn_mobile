@@ -233,12 +233,12 @@ export async function POST(request: Request) {
         pgQuery<{
           id: number;
           name: string;
-          password: string | null;
+          has_pin: boolean;
           department_id: number | null;
           role: 'user' | 'admin' | 'department_admin';
           department_name: string | null;
         }>(
-          `SELECT e.id, e.name, e.password, e.department_id, e.role, d.name AS department_name
+          `SELECT e.id, e.name, (e.password IS NOT NULL) AS has_pin, e.department_id, e.role, d.name AS department_name
            FROM public.employees e
            LEFT JOIN public.departments d ON d.id = e.department_id
            ORDER BY e.name ASC`
@@ -250,7 +250,7 @@ export async function POST(request: Request) {
         employees: employeesRes.rows.map((row) => ({
           id: row.id,
           name: row.name,
-          password: row.password,
+          has_pin: row.has_pin,
           department_id: row.department_id,
           role: row.role,
           departments: row.department_id && row.department_name
