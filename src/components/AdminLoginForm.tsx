@@ -31,8 +31,9 @@ export default function AdminLoginForm({
         setLoading(true);
         try {
             await loginWithPin(trimmed, redirectPath);
-        } catch {
-            setError('Błędny PIN');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Błędny PIN';
+            setError(message);
             setPin('');
             inputRef.current?.focus();
         } finally {

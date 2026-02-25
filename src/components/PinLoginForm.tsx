@@ -42,8 +42,9 @@ export default function PinLoginForm({
         setLoading(true);
         try {
             await loginWithPin(pin, redirectPath);
-        } catch {
-            setError('Błędny PIN');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Błędny PIN';
+            setError(message);
             setPin('');
         } finally {
             setLoading(false);
