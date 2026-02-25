@@ -28,7 +28,7 @@ const categoryOptions = [
   { value: '', label: 'Wszystkie' },
   { value: 'auth', label: 'Autoryzacja' },
   { value: 'visit', label: 'Interesanci' },
-  { value: 'admin', label: 'Panel admina' },
+  { value: 'admin', label: 'Panel administratora' },
   { value: 'system', label: 'System' },
   { value: 'other', label: 'Inne' }
 ];
@@ -147,7 +147,7 @@ export default function AdminLogsPage() {
       const payload = await response.json() as { logs: EventLog[] };
       setLogs(payload.logs || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : 'Nieznany błąd');
       setLogs([]);
     } finally {
       setLoading(false);

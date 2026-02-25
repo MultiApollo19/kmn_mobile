@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -365,7 +365,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ? loginData.error
           : typeof loginData?.message === 'string'
             ? loginData.message
-            : 'Nieprawidłowy PIN';
+            : 'Nieprawid�owy PIN';
       throw new Error(message);
     }
 
@@ -417,8 +417,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     } catch (err) {
       console.error("Auth Error:", err);
-      const message = err instanceof Error ? err.message : 'Nieznany bĹ‚Ä…d';
-      throw new Error('BĹ‚Ä…d autoryzacji: ' + message);
+      const message = err instanceof Error ? err.message : 'Nieznany błąd';
+      throw new Error('Błąd autoryzacji: ' + message);
     }
   };
 

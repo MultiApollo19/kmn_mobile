@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -91,7 +91,7 @@ export default function EmployeesPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Czy na pewno chcesz usunÄ…Ä‡ tego pracownika?')) return;
+    if (!confirm('Czy na pewno chcesz usunąć tego pracownika?')) return;
 
     try {
       const deleteRes = await fetch('/api/db/mutate', {
@@ -109,8 +109,8 @@ export default function EmployeesPage() {
       if (!deleteRes.ok) throw new Error(`HTTP ${deleteRes.status}`);
       fetchData();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'WystÄ…piĹ‚ bĹ‚Ä…d';
-      alert('BĹ‚Ä…d podczas usuwania: ' + message);
+      const message = err instanceof Error ? err.message : 'Wystąpił błąd';
+      alert('Błąd podczas usuwania: ' + message);
     }
   };
 
@@ -130,7 +130,7 @@ export default function EmployeesPage() {
     }
 
     if (formData.pin && formData.pin.length < 4) {
-        setError('PIN musi mieÄ‡ co najmniej 4 znaki');
+        setError('PIN musi mieć co najmniej 4 znaki');
         return;
     }
 
@@ -156,7 +156,7 @@ export default function EmployeesPage() {
       handleCancel();
       fetchData();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'WystÄ…piĹ‚ bĹ‚Ä…d');
+      setError(err instanceof Error ? err.message : 'Wystąpił błąd');
     }
   };
 
@@ -184,7 +184,7 @@ export default function EmployeesPage() {
           </div>
         ) : filteredEmployees.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
-            {searchQuery ? `Brak wynikĂłw dla "${searchQuery}".` : 'Brak pracownikĂłw. Dodaj pierwszego pracownika.'}
+            {searchQuery ? `Brak wyników dla "${searchQuery}".` : 'Brak pracowników. Dodaj pierwszego pracownika.'}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -192,7 +192,7 @@ export default function EmployeesPage() {
               <thead className="bg-muted/30 text-muted-foreground font-semibold border-b border-border">
                 <tr>
                   <th className="px-6 py-4">Pracownik</th>
-                  <th className="px-6 py-4">DziaĹ‚</th>
+                  <th className="px-6 py-4">Dział</th>
                   <th className="px-6 py-4">Rola</th>
                   <th className="px-6 py-4">PIN</th>
                   <th className="px-6 py-4 text-right">Akcje</th>
@@ -225,11 +225,11 @@ export default function EmployeesPage() {
                             {emp.role === 'admin' && <Shield className="w-3 h-3" />}
                             {emp.role === 'department_admin' && <Users className="w-3 h-3" />}
                             {emp.role === 'user' && <User className="w-3 h-3" />}
-                            {emp.role === 'admin' ? 'Administrator' : emp.role === 'department_admin' ? 'Kierownik' : 'UĹĽytkownik'}
+                            {emp.role === 'admin' ? 'Administrator' : emp.role === 'department_admin' ? 'Kierownik' : 'Użytkownik'}
                         </span>
                     </td>
                     <td className="px-6 py-4 font-mono text-muted-foreground">
-                        {emp.password ? 'â€˘â€˘â€˘â€˘' : <span className="text-destructive text-xs">Brak PIN</span>}
+                        {emp.password ? '••••' : <span className="text-destructive text-xs">Brak PIN</span>}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -243,7 +243,7 @@ export default function EmployeesPage() {
                         <button 
                           onClick={() => handleDelete(emp.id)}
                           className="p-2 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition-colors"
-                          title="UsuĹ„"
+                          title="Usuń"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -264,7 +264,7 @@ export default function EmployeesPage() {
       >
         <form onSubmit={handleSave} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">ImiÄ™ i Nazwisko</label>
+            <label className="block text-sm font-medium mb-1">Imię i Nazwisko</label>
             <input
               type="text"
               value={formData.name}
@@ -276,28 +276,28 @@ export default function EmployeesPage() {
           
           <div>
             <label className="block text-sm font-medium mb-1">
-              {isAdding ? 'PIN Osobisty' : 'ZmieĹ„ PIN (opcjonalnie)'}
+              {isAdding ? 'PIN Osobisty' : 'Zmień PIN (opcjonalnie)'}
             </label>
             <input
               type="text"
               value={formData.pin}
               onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
               className="w-full bg-muted/50 border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              placeholder={isAdding ? "np. 1234" : "Wpisz nowy PIN aby zmieniÄ‡"}
+              placeholder={isAdding ? "np. 1234" : "Wpisz nowy PIN aby zmienić"}
             />
              <p className="text-xs text-muted-foreground mt-1">
-                 {isAdding ? "Wymagane 4 cyfry." : "Pozostaw puste, aby zachowaÄ‡ obecny PIN."}
+                 {isAdding ? "Wymagane 4 cyfry." : "Pozostaw puste, aby zachować obecny PIN."}
              </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">DziaĹ‚</label>
+            <label className="block text-sm font-medium mb-1">Dział</label>
             <select
               value={formData.department_id}
               onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
               className="w-full bg-muted/50 border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             >
-              <option value="">-- Wybierz dziaĹ‚ --</option>
+              <option value="">-- Wybierz dział --</option>
               {departments.map(dept => (
                 <option key={dept.id} value={dept.id}>{dept.name}</option>
               ))}
@@ -311,7 +311,7 @@ export default function EmployeesPage() {
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   className="w-full bg-muted/50 border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               >
-                  <option value="user">UĹĽytkownik</option>
+                  <option value="user">Użytkownik</option>
                   <option value="admin">Administrator Systemu</option>
               </select>
           </div>

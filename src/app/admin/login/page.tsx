@@ -13,7 +13,7 @@ export default function AdminLoginPage() {
 
                 <div className="block lg:hidden">
                     <PinLoginForm 
-                        title="Panel Administratora"
+                        title="Panel administratora"
                         description="Wprowadź kod PIN administratora"
                         redirectPath="/admin"
                     />

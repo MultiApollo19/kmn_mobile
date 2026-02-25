@@ -21,7 +21,7 @@ export default function ReportsDashboard() {
               <FileText className="w-7 h-7" />
             </div>
             
-            <h2 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-indigo-700 transition-colors">Pełna Historia Wizyt</h2>
+            <h2 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-indigo-700 transition-colors">Pełna historia wizyt</h2>
             <p className="text-slate-500 mb-8 flex-1">
               Przeglądaj wszystkie zarejestrowane wizyty.
               Dostęp do pełnego archiwum.

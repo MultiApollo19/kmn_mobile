@@ -148,7 +148,7 @@ export default function HistoryReportPage() {
       }
       
       doc.setFontSize(16);
-      doc.text('Raport Historii Wizyt', 14, 15);
+      doc.text('Raport historii wizyt', 14, 15);
       
       doc.setFontSize(10);
       const genDate = `Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm')}`;

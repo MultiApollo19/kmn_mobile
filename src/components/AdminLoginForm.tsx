@@ -13,7 +13,7 @@ interface AdminLoginFormProps {
 }
 
 export default function AdminLoginForm({ 
-    title = 'Panel Administratora', 
+    title = 'Panel administratora', 
     description = 'Zaloguj się, aby zarządzać systemem', 
     redirectPath = '/admin' 
 }: AdminLoginFormProps) {

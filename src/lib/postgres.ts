@@ -111,7 +111,7 @@ export async function logPostgresConnectionCheck(
     console.error('[PG_CHECK] Connection FAILED', {
       context,
       ...summary,
-      message: err?.message ?? 'Unknown error',
+      message: err?.message ?? 'Nieznany błąd',
       code: err?.code ?? null,
       errno: err?.errno ?? null,
       timestamp: new Date().toISOString(),

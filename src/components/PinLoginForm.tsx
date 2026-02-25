@@ -14,7 +14,7 @@ interface PinLoginFormProps {
 
 export default function PinLoginForm({ 
   title = 'Witaj', 
-  description = 'Wprowadź swój kod PIN aby kontynuować',
+    description = 'Wprowadź swój kod PIN, aby kontynuować',
   redirectPath = '/'
 }: PinLoginFormProps) {
     const { loginWithPin } = useAuth();

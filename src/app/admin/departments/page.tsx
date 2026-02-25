@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -73,7 +73,7 @@ export default function DepartmentsPage() {
       body: JSON.stringify({ query: 'departments.employees', params: { departmentId: id } }),
     });
     if (!checkResponse.ok) {
-      alert('Błąd podczas sprawdzania powiązań: HTTP ' + checkResponse.status);
+      alert('B��d podczas sprawdzania powi�za�: HTTP ' + checkResponse.status);
       return;
     }
     const checkPayload = await checkResponse.json() as { employees: Array<{ name: string }> };
@@ -82,11 +82,11 @@ export default function DepartmentsPage() {
     if (employees && employees.length > 0) {
       const names = employees.map(e => e.name).slice(0, 5).join(', ');
       const more = employees.length > 5 ? ` i ${employees.length - 5} innych` : '';
-      alert(`Nie moĹĽna usunÄ…Ä‡ dziaĹ‚u. Przypisani pracownicy: ${names}${more}. Musisz ich najpierw przenieĹ›Ä‡ lub usunÄ…Ä‡.`);
+      alert(`Nie można usunąć działu. Przypisani pracownicy: ${names}${more}. Musisz ich najpierw przenieść lub usunąć.`);
       return;
     }
 
-    if (!confirm('Czy na pewno chcesz usunÄ…Ä‡ ten dziaĹ‚?')) return;
+    if (!confirm('Czy na pewno chcesz usunąć ten dział?')) return;
 
     try {
       const response = await fetch('/api/db/mutate', {
@@ -104,8 +104,8 @@ export default function DepartmentsPage() {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       fetchDepartments();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'WystÄ…piĹ‚ bĹ‚Ä…d';
-      alert('BĹ‚Ä…d podczas usuwania: ' + message);
+      const message = err instanceof Error ? err.message : 'Wystąpił błąd';
+      alert('Błąd podczas usuwania: ' + message);
     }
   };
 
@@ -114,7 +114,7 @@ export default function DepartmentsPage() {
     setError(null);
 
     if (!formData.name) {
-      setError('Nazwa dziaĹ‚u jest wymagana');
+      setError('Nazwa działu jest wymagana');
       return;
     }
 
@@ -153,7 +153,7 @@ export default function DepartmentsPage() {
       handleCancel();
       fetchDepartments();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'WystÄ…piĹ‚ bĹ‚Ä…d';
+      const message = err instanceof Error ? err.message : 'Wystąpił błąd';
       setError(message);
     }
   };
@@ -171,7 +171,7 @@ export default function DepartmentsPage() {
           className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg transition-colors font-medium shadow-sm"
         >
           <Plus size={18} />
-          Dodaj dziaĹ‚
+          Dodaj dział
         </button>
       </div>
 
@@ -182,7 +182,7 @@ export default function DepartmentsPage() {
           </div>
         ) : filteredDepartments.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
-            {searchQuery ? `Brak wynikĂłw dla "${searchQuery}".` : 'Brak zdefiniowanych dziaĹ‚Ăłw. Dodaj pierwszy dziaĹ‚.'}
+            {searchQuery ? `Brak wyników dla "${searchQuery}".` : 'Brak zdefiniowanych działów. Dodaj pierwszy dział.'}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -212,7 +212,7 @@ export default function DepartmentsPage() {
                         <button 
                           onClick={() => handleDelete(dept.id)}
                           className="p-2 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition-colors"
-                          title="UsuĹ„"
+                          title="Usuń"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -229,11 +229,11 @@ export default function DepartmentsPage() {
       <Modal
         isOpen={isAdding || isEditing !== null}
         onClose={handleCancel}
-        title={isAdding ? 'Dodaj nowy dziaĹ‚' : 'Edytuj dziaĹ‚'}
+        title={isAdding ? 'Dodaj nowy dział' : 'Edytuj dział'}
       >
         <form onSubmit={handleSave} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Nazwa dziaĹ‚u</label>
+            <label className="block text-sm font-medium mb-1">Nazwa działu</label>
             <input
               type="text"
               value={formData.name}

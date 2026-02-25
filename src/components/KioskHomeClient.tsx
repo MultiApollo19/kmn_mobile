@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useAuth } from "@/src/hooks/useAuth";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -161,7 +161,7 @@ const SignaturePad = ({ onEnd, disabled }: { onEnd: (dataUrl: string) => void, d
           type="button" 
           onClick={clear}
           className="absolute top-3 right-3 z-20 p-2 bg-white text-red-500 hover:text-red-500 hover:bg-red-50 rounded-lg shadow-sm border border-slate-200 transition-all"
-          title="WyczyĹ›Ä‡ podpis"
+          title="Wyczyść podpis"
         >
           <XCircle className="w-5 h-5" />
         </button>
@@ -302,12 +302,12 @@ export default function KioskHomeClient({
   const handleAdmission = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !visitorName || !selectedPurpose || !selectedBadge || !signature) {
-      alert("ProszÄ™ uzupeĹ‚niÄ‡ wszystkie wymagane pola i podpisaÄ‡ formularz.");
+      alert("Proszę uzupełnić wszystkie wymagane pola i podpisać formularz.");
       return;
     }
 
     if (selectedPurpose === 'Inne' && notes.trim().length < 3) {
-      alert("W przypadku celu wizyty 'Inne', uwagi muszÄ… zawieraÄ‡ co najmniej 3 znaki.");
+      alert("W przypadku celu wizyty 'Inne', uwagi muszą zawierać co najmniej 3 znaki.");
       return;
     }
 
@@ -347,14 +347,14 @@ export default function KioskHomeClient({
 
     } catch (err) {
       console.error("Error submitting visit:", err);
-      alert("WystÄ…piĹ‚ bĹ‚Ä…d podczas zapisywania wizyty.");
+      alert("Wystąpił błąd podczas zapisywania wizyty.");
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleCheckout = async (visitId: number) => {
-    if (!confirm("Czy na pewno chcesz zakoĹ„czyÄ‡ tÄ™ wizytÄ™?")) return;
+    if (!confirm("Czy na pewno chcesz zakończyć tę wizytę?")) return;
 
     try {
       const response = await fetch('/api/db/mutate', {
@@ -378,7 +378,7 @@ export default function KioskHomeClient({
       await revalidateCache();
     } catch (err) {
       console.error("Error checking out:", err);
-      alert("Nie udaĹ‚o siÄ™ zakoĹ„czyÄ‡ wizyty.");
+      alert("Nie udało się zakończyć wizyty.");
     }
   };
 
@@ -395,7 +395,7 @@ export default function KioskHomeClient({
     if (!editingVisit) return;
 
     if (editPurpose === 'Inne' && editNotes.trim().length < 3) {
-      alert("W przypadku celu wizyty 'Inne', uwagi muszÄ… zawieraÄ‡ co najmniej 3 znaki.");
+      alert("W przypadku celu wizyty 'Inne', uwagi muszą zawierać co najmniej 3 znaki.");
       return;
     }
 
@@ -428,7 +428,7 @@ export default function KioskHomeClient({
       setEditingVisit(null);
     } catch (err) {
       console.error("Error updating visit:", err);
-      alert("Nie udaĹ‚o siÄ™ zaktualizowaÄ‡ wizyty.");
+      alert("Nie udało się zaktualizować wizyty.");
     } finally {
       setSavingEdit(false);
     }
@@ -459,7 +459,7 @@ export default function KioskHomeClient({
                  />
               </div>
               <div className="hidden md:block">
-                <h1 className="text-lg font-bold tracking-tight text-slate-900">Rejestr interesantĂłw</h1>
+                <h1 className="text-lg font-bold tracking-tight text-slate-900">Rejestr interesantów</h1>
               </div>
             </div>
 
@@ -492,7 +492,7 @@ export default function KioskHomeClient({
                 <button 
                   onClick={logout}
                   className="ml-1 p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200"
-                  title="Wyloguj siÄ™"
+                  title="Wyloguj się"
                 >
                   <LogOut className="w-5 h-5" />
                 </button>
@@ -539,7 +539,7 @@ export default function KioskHomeClient({
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900">Nowa Wizyta</h2>
-                  <p className="text-xs text-slate-500">WprowadĹş dane goĹ›cia</p>
+                  <p className="text-xs text-slate-500">Wprowadź dane gościa</p>
                 </div>
               </div>
 
@@ -549,7 +549,7 @@ export default function KioskHomeClient({
                   {/* Visitor Name */}
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-700 ml-1">
-                      ImiÄ™ i nazwisko interesanta <span className="text-red-500">*</span>
+                      Imię i nazwisko interesanta <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <User className="absolute left-3.5 top-3 w-5 h-5 text-slate-400" />
@@ -558,7 +558,7 @@ export default function KioskHomeClient({
                         value={visitorName}
                         onChange={e => setVisitorName(e.target.value)}
                         className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-medium"
-                        placeholder="ImiÄ™ i nazwisko interesanta"
+                        placeholder="Imię i nazwisko interesanta"
                         required
                       />
                     </div>
@@ -646,7 +646,7 @@ export default function KioskHomeClient({
                   >
                     <div className="relative z-10 flex items-center justify-center gap-2">
                       {submitting ? <Loader2 className="animate-spin w-5 h-5" /> : <Save className="w-5 h-5" />}
-                      <span>ZatwierdĹş wejĹ›cie</span>
+                      <span>Zatwierdź wejście</span>
                     </div>
                     {/* Shine effect */}
                     <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-linear-to-r from-transparent to-white opacity-10 group-hover:animate-shine" />
@@ -662,13 +662,13 @@ export default function KioskHomeClient({
             <div className="shrink-0 flex items-center justify-between mb-3">
               <div>
                 <h2 className="text-xl font-bold text-slate-900">Aktywne Wizyty</h2>
-                <p className="text-sm text-slate-500 mt-0.5">Lista goĹ›ci przebywajÄ…cych w Twoim dziale</p>
+                <p className="text-sm text-slate-500 mt-0.5">Lista gości przebywających w Twoim dziale</p>
               </div>
               <div className="flex items-center gap-2">
                 <button 
                   onClick={fetchData} 
                   className="p-2 bg-white hover:bg-slate-50 border border-slate-200 rounded-full text-slate-600 transition-all shadow-sm hover:shadow-md"
-                  title="OdĹ›wieĹĽ listÄ™"
+                  title="Odśwież listę"
                 >
                   <History className="w-4 h-4" />
                 </button>
@@ -689,7 +689,7 @@ export default function KioskHomeClient({
                   </div>
                   <h3 className="text-lg font-bold text-slate-900">Brak aktywnych wizyt</h3>
                   <p className="text-slate-500 max-w-xs text-center mt-1 text-sm">
-                    Wszystkie wizyty w Twoim dziale zostaĹ‚y zakoĹ„czone. UĹĽyj formularza po lewej, aby dodaÄ‡ nowÄ….
+                    Wszystkie wizyty w Twoim dziale zostały zakończone. Użyj formularza po lewej, aby dodać nową.
                   </p>
                 </div>
               ) : (
@@ -752,11 +752,11 @@ export default function KioskHomeClient({
                         <div className="space-y-2 mb-6 flex-1">
                            <div className="flex items-center gap-2 text-sm text-slate-500">
                               <Clock className="w-4 h-4 text-slate-400" />
-                              <span>WejĹ›cie: <span className="font-semibold text-slate-700">{new Date(visit.entry_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></span>
+                              <span>Wejście: <span className="font-semibold text-slate-700">{new Date(visit.entry_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></span>
                            </div>
                            <div className="flex items-center gap-2 text-sm text-slate-500">
                               <MapPin className="w-4 h-4 text-slate-400" />
-                              <span>WpuĹ›ciĹ‚: <span className="font-semibold text-slate-700">{visit.employee.name}</span></span>
+                              <span>Wpuścił: <span className="font-semibold text-slate-700">{visit.employee.name}</span></span>
                            </div>
                            {visit.notes ? (
                              <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-100 text-xs text-amber-800 italic">
@@ -775,7 +775,7 @@ export default function KioskHomeClient({
                           className="w-full py-2.5 rounded-xl bg-white border-2 border-emerald-500  text-slate-600 font-semibold transition-all flex items-center justify-center gap-2 group/btn"
                         >
                           <LogOut className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
-                          <span>ZakoĹ„cz wizytÄ™</span>
+                          <span>Zakończ wizytę</span>
                         </button>
                       </div>
                     </div>
@@ -806,7 +806,7 @@ export default function KioskHomeClient({
             <div className="p-6 space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700 ml-1">
-                  ImiÄ™ i nazwisko interesanta
+                  Imię i nazwisko interesanta
                 </label>
                 <div className="relative">
                   <User className="absolute left-3.5 top-3.5 w-5 h-5 text-slate-400" />

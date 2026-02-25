@@ -4,7 +4,7 @@ import './globals.css';
 import ScreenSizeWarning from '../components/ScreenSizeWarning';
 import { AuthProvider } from '@/src/context/AuthContext';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin', 'latin-ext'] });
 
 export const metadata: Metadata = {
     title: 'Rejestr interesantów',

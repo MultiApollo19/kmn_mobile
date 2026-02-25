@@ -137,7 +137,7 @@ export default function SystemExitsPage() {
       }
       
       doc.setFontSize(16);
-      doc.text('Raport Automatycznych Wyjść (Przekroczenia)', 14, 15);
+      doc.text('Raport automatycznych wyjść (przekroczenia)', 14, 15);
       
       doc.setFontSize(10);
       doc.text(`Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm')}`, 14, 22);
@@ -155,7 +155,7 @@ export default function SystemExitsPage() {
 
       autoTable(doc, {
         theme: 'grid',
-        head: [['Lp.', 'Wejście', 'Wyjście (System)', 'Interesant', 'Pracownik (Wpuszczający)', 'Dział', 'Cel', 'Uwagi']],
+        head: [['Lp.', 'Wejście', 'Wyjście (system)', 'Interesant', 'Pracownik wpuszczający', 'Dział', 'Cel', 'Uwagi']],
         body: tableData,
         startY: 25,
         styles: { fontSize: 8, cellPadding: 2, font: 'Roboto', valign: 'middle', overflow: 'linebreak', lineWidth: 0.1 },
@@ -247,8 +247,8 @@ export default function SystemExitsPage() {
                 <table className="w-full text-sm text-left">
                   <thead className="bg-red-50 text-red-900 font-semibold border-b border-red-100">
                     <tr>
-                      <th className="px-6 py-4">Data Wizyty</th>
-                      <th className="px-6 py-4">Pracownik (Odpowiedzialny)</th>
+                      <th className="px-6 py-4">Data wizyty</th>
+                      <th className="px-6 py-4">Pracownik odpowiedzialny</th>
                       <th className="px-6 py-4">Interesant</th>
                       <th className="px-6 py-4">Cel</th>
                     </tr>
