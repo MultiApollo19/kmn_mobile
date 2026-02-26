@@ -17,7 +17,7 @@ type Department = {
 type Employee = {
   id: number;
   name: string;
-  password: string | null;
+  has_pin: boolean;
   department_id: number | null;
   role: 'user' | 'admin' | 'department_admin';
   departments: Department | null;
@@ -56,8 +56,6 @@ export default function EmployeesPage() {
       setDepartments(payload.departments || []);
     } catch (error) {
       console.error('Error fetching employees/departments:', error);
-      setEmployees([]);
-      setDepartments([]);
     } finally {
       setLoading(false);
     }
@@ -119,7 +117,7 @@ export default function EmployeesPage() {
     setError(null);
 
     if (!formData.name) {
-      setError('Nazwa jest wymagana');
+      setError('Imię i nazwisko są wymagane');
       return;
     }
     
@@ -129,13 +127,14 @@ export default function EmployeesPage() {
         return;
     }
 
-    if (formData.pin && formData.pin.length < 4) {
-        setError('PIN musi mieć co najmniej 4 znaki');
+    const normalizedPin = formData.pin.trim();
+    if (normalizedPin && !/^\d{4}$/.test(normalizedPin)) {
+        setError('PIN musi mieć dokładnie 4 cyfry');
         return;
     }
 
     try {
-      const pinHash = formData.pin ? await hashPinClient(formData.pin) : null;
+      const pinHash = normalizedPin ? await hashPinClient(normalizedPin) : null;
 
       const response = await fetch('/api/employees/manage', {
         method: 'POST',
@@ -146,12 +145,20 @@ export default function EmployeesPage() {
         body: JSON.stringify({
           id: isEditing || null,
           name: formData.name,
+          pin: normalizedPin || null,
           pinHash,
           role: formData.role,
           department_id: formData.department_id ? parseInt(formData.department_id) : null,
         }),
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {
+        let message = `HTTP ${response.status}`;
+        try {
+          const errorPayload = await response.json() as { error?: string };
+          if (errorPayload?.error) message = errorPayload.error;
+        } catch {}
+        throw new Error(message);
+      }
 
       handleCancel();
       fetchData();
@@ -228,9 +235,6 @@ export default function EmployeesPage() {
                             {emp.role === 'admin' ? 'Administrator' : emp.role === 'department_admin' ? 'Kierownik' : 'Użytkownik'}
                         </span>
                     </td>
-                    <td className="px-6 py-4 font-mono text-muted-foreground">
-                        {emp.password ? '••••' : <span className="text-destructive text-xs">Brak PIN</span>}
-                    </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button 
@@ -262,9 +266,9 @@ export default function EmployeesPage() {
         onClose={handleCancel}
         title={isAdding ? 'Dodaj nowego pracownika' : 'Edytuj pracownika'}
       >
-        <form onSubmit={handleSave} className="space-y-4">
+        <form onSubmit={handleSave} noValidate className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Imię i Nazwisko</label>
+            <label className="block text-sm font-medium mb-1">Imię i nazwisko</label>
             <input
               type="text"
               value={formData.name}
@@ -276,14 +280,16 @@ export default function EmployeesPage() {
           
           <div>
             <label className="block text-sm font-medium mb-1">
-              {isAdding ? 'PIN Osobisty' : 'Zmień PIN (opcjonalnie)'}
+              {isAdding ? 'PIN osobisty' : 'Zmień PIN (opcjonalnie)'}
             </label>
             <input
               type="text"
               value={formData.pin}
-              onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+              inputMode="numeric"
+              maxLength={4}
               className="w-full bg-muted/50 border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              placeholder={isAdding ? "np. 1234" : "Wpisz nowy PIN aby zmienić"}
+              placeholder={isAdding ? "np. 1234" : "Wpisz nowy PIN, aby zmienić"}
             />
              <p className="text-xs text-muted-foreground mt-1">
                  {isAdding ? "Wymagane 4 cyfry." : "Pozostaw puste, aby zachować obecny PIN."}
@@ -312,7 +318,7 @@ export default function EmployeesPage() {
                   className="w-full bg-muted/50 border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               >
                   <option value="user">Użytkownik</option>
-                  <option value="admin">Administrator Systemu</option>
+                  <option value="admin">Administrator systemu</option>
               </select>
           </div>
 

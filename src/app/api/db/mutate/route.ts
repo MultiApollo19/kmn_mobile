@@ -74,6 +74,20 @@ export async function POST(request: Request) {
       const rows = Array.isArray(values) ? values : [values];
       if (!rows.length) return NextResponse.json({ error: 'Puste values dla insert' }, { status: 400 });
 
+      if (table === 'employees') {
+        const hasSensitiveColumns = rows.some((row) => {
+          const payload = row as Record<string, unknown>;
+          return Object.prototype.hasOwnProperty.call(payload, 'password') || Object.prototype.hasOwnProperty.call(payload, 'pin_hash');
+        });
+
+        if (hasSensitiveColumns) {
+          return NextResponse.json(
+            { error: 'Zmiana PIN przez db/mutate jest zablokowana. Użyj /api/employees/manage.' },
+            { status: 400 }
+          );
+        }
+      }
+
       const columns = Object.keys(rows[0]);
       if (!columns.length) return NextResponse.json({ error: 'Brak kolumn dla insert' }, { status: 400 });
 
@@ -97,6 +111,20 @@ export async function POST(request: Request) {
 
     if (action === 'update') {
       if (!values) return NextResponse.json({ error: 'Brak values dla update' }, { status: 400 });
+
+      if (table === 'employees') {
+        const payload = values as Record<string, unknown>;
+        const touchesSensitiveColumns =
+          Object.prototype.hasOwnProperty.call(payload, 'password') ||
+          Object.prototype.hasOwnProperty.call(payload, 'pin_hash');
+
+        if (touchesSensitiveColumns) {
+          return NextResponse.json(
+            { error: 'Zmiana PIN przez db/mutate jest zablokowana. Użyj /api/employees/manage.' },
+            { status: 400 }
+          );
+        }
+      }
 
       const entries = Object.entries(values);
       if (!entries.length) return NextResponse.json({ error: 'Brak pól do update' }, { status: 400 });
