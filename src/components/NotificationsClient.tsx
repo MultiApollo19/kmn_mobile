@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Bell, Loader2 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
+const LAST_SEEN_STORAGE_KEY = 'kmn_admin_notifications_last_seen';
+
 type EventLog = {
 	id: number;
 	created_at: string;
@@ -85,14 +87,34 @@ export default function NotificationsClient() {
 
 	const sinceIso = useMemo(() => new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), []);
 
+	const getSinceForUnread = useCallback(() => {
+		if (typeof window === 'undefined') return sinceIso;
+
+		const stored = window.localStorage.getItem(LAST_SEEN_STORAGE_KEY);
+		if (!stored) return sinceIso;
+
+		const lastSeenTime = new Date(stored).getTime();
+		const fallbackTime = new Date(sinceIso).getTime();
+		if (Number.isNaN(lastSeenTime)) return sinceIso;
+
+		return new Date(Math.max(lastSeenTime, fallbackTime)).toISOString();
+	}, [sinceIso]);
+
+	const markAsSeen = useCallback(() => {
+		const nowIso = new Date().toISOString();
+		window.localStorage.setItem(LAST_SEEN_STORAGE_KEY, nowIso);
+		setAlertCount(0);
+	}, []);
+
 	const fetchAlerts = useCallback(async () => {
 		try {
+			const unreadSince = getSinceForUnread();
 			const response = await fetch('/api/db/query', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					query: 'eventLogs.alertCount',
-					params: { since: sinceIso },
+					params: { since: unreadSince },
 				}),
 			});
 			if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -101,7 +123,7 @@ export default function NotificationsClient() {
 		} catch {
 			setAlertCount(0);
 		}
-	}, [sinceIso]);
+	}, [getSinceForUnread]);
 
 	const fetchItems = useCallback(async () => {
 		setLoading(true);
@@ -160,7 +182,15 @@ export default function NotificationsClient() {
 				className="p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors relative"
 				aria-label="Powiadomienia"
 				aria-expanded={isOpen}
-				onClick={() => setIsOpen((prev) => !prev)}
+				onClick={() => {
+					setIsOpen((prev) => {
+						const nextOpen = !prev;
+						if (nextOpen) {
+							markAsSeen();
+						}
+						return nextOpen;
+					});
+				}}
 			>
 				<Bell className="w-5 h-5" />
 				{alertCount > 0 && (
