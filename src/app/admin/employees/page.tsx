@@ -41,6 +41,9 @@ export default function EmployeesPage() {
     role: 'user' 
   });
   const [error, setError] = useState<string | null>(null);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [isCheckingPin, setIsCheckingPin] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -69,6 +72,38 @@ export default function EmployeesPage() {
     return () => clearTimeout(timer);
   }, [fetchData]);
 
+  useEffect(() => {
+    const checkPin = async () => {
+      const pin = formData.pin;
+      if (pin.length === 4) {
+        setIsCheckingPin(true);
+        setPinError(null);
+        try {
+          const pinHash = await hashPinClient(pin);
+          const response = await fetch('/api/employees/check-pin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pinHash, excludeEmployeeId: isEditing }),
+          });
+          const data = await response.json();
+          if (data.isTaken) {
+            setPinError('Ten PIN jest już przypisany do innego pracownika.');
+          }
+        } catch (error) {
+          console.error('Błąd podczas sprawdzania PIN:', error);
+        } finally {
+          setIsCheckingPin(false);
+        }
+      } else {
+        setPinError(null);
+        setIsCheckingPin(false);
+      }
+    };
+
+    const timer = setTimeout(checkPin, 500);
+    return () => clearTimeout(timer);
+  }, [formData.pin, isEditing]);
+
   const handleEdit = (emp: Employee) => {
     setIsEditing(emp.id);
     setFormData({ 
@@ -79,6 +114,9 @@ export default function EmployeesPage() {
     });
     setIsAdding(false);
     setError(null);
+    setPinError(null);
+    setIsCheckingPin(false);
+    setIsSaving(false);
   };
 
   const handleCancel = () => {
@@ -86,6 +124,9 @@ export default function EmployeesPage() {
     setIsAdding(false);
     setFormData({ name: '', pin: '', department_id: '', role: 'user' });
     setError(null);
+    setPinError(null);
+    setIsCheckingPin(false);
+    setIsSaving(false);
   };
 
   const handleDelete = async (id: number) => {
@@ -133,6 +174,13 @@ export default function EmployeesPage() {
         return;
     }
 
+    if (pinError || isCheckingPin) {
+        setError('Popraw błędy w formularzu przed zapisem');
+        return;
+    }
+
+    setIsSaving(true);
+
     try {
       const pinHash = normalizedPin ? await hashPinClient(normalizedPin) : null;
 
@@ -164,6 +212,8 @@ export default function EmployeesPage() {
       fetchData();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Wystąpił błąd');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -177,7 +227,7 @@ export default function EmployeesPage() {
       <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4">
         <button 
           onClick={() => { setIsAdding(true); setFormData({ name: '', pin: '', department_id: '', role: 'user' }); }}
-          className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg transition-colors font-medium shadow-sm"
+          className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg transition-colors font-medium shadow-sm cursor-pointer"
         >
           <Plus size={18} />
           Dodaj pracownika
@@ -239,14 +289,14 @@ export default function EmployeesPage() {
                       <div className="flex items-center justify-end gap-2">
                         <button 
                           onClick={() => handleEdit(emp)}
-                          className="p-2 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors"
+                          className="p-2 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors cursor-pointer"
                           title="Edytuj"
                         >
                           <Edit2 size={16} />
                         </button>
                         <button 
                           onClick={() => handleDelete(emp.id)}
-                          className="p-2 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition-colors"
+                          className="p-2 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition-colors cursor-pointer"
                           title="Usuń"
                         >
                           <Trash2 size={16} />
@@ -282,17 +332,31 @@ export default function EmployeesPage() {
             <label className="block text-sm font-medium mb-1">
               {isAdding ? 'PIN osobisty' : 'Zmień PIN (opcjonalnie)'}
             </label>
-            <input
-              type="text"
-              value={formData.pin}
-              onChange={(e) => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-              inputMode="numeric"
-              maxLength={4}
-              className="w-full bg-muted/50 border border-input rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              placeholder={isAdding ? "np. 1234" : "Wpisz nowy PIN, aby zmienić"}
-            />
-             <p className="text-xs text-muted-foreground mt-1">
-                 {isAdding ? "Wymagane 4 cyfry." : "Pozostaw puste, aby zachować obecny PIN."}
+            <div className="relative">
+              <input
+                type="text"
+                value={formData.pin}
+                onChange={(e) => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                inputMode="numeric"
+                maxLength={4}
+                className={cn(
+                  "w-full bg-muted/50 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors",
+                  pinError 
+                    ? "border-destructive focus:ring-destructive/20 focus:border-destructive" 
+                    : formData.pin.length === 4 && !isCheckingPin
+                      ? "border-green-500 focus:ring-green-500/20 focus:border-green-500 bg-green-50/50"
+                      : "border-input focus:ring-primary/20 focus:border-primary"
+                )}
+                placeholder={isAdding ? "np. 1234" : "Wpisz nowy PIN, aby zmienić"}
+              />
+              {isCheckingPin && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
+                </div>
+              )}
+            </div>
+             <p className={cn("text-xs mt-1 transition-colors", pinError ? "text-destructive font-medium" : formData.pin.length === 4 && !isCheckingPin ? "text-green-600 font-medium" : "text-muted-foreground")}>
+                 {pinError ? pinError : (formData.pin.length === 4 && !isCheckingPin ? "PIN jest wolny" : (isAdding ? "Wymagane 4 cyfry." : "Pozostaw puste, aby zachować obecny PIN."))}
              </p>
           </div>
 
@@ -332,17 +396,19 @@ export default function EmployeesPage() {
             <button 
               type="button" 
               onClick={handleCancel}
-              className="flex items-center gap-2 bg-muted text-muted-foreground hover:bg-muted/80 px-4 py-2 rounded-lg transition-colors font-medium text-sm"
+              disabled={isSaving}
+              className="flex items-center gap-2 bg-muted text-muted-foreground hover:bg-muted/80 px-4 py-2 rounded-lg transition-colors font-medium text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <X size={16} />
               Anuluj
             </button>
             <button 
               type="submit" 
-              className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg transition-colors font-medium text-sm"
+              disabled={isSaving || isCheckingPin}
+              className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg transition-colors font-medium text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Save size={16} />
-              Zapisz
+              {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+              {isSaving ? 'Zapisywanie...' : 'Zapisz'}
             </button>
           </div>
         </form>

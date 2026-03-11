@@ -1,6 +1,7 @@
 ﻿import { hash } from 'bcryptjs';
 import { NextResponse } from 'next/server';
 import { pgQuery } from '@/src/lib/postgres';
+import { isPinUnique } from '@/src/lib/checkPinUnique';
 
 export const runtime = 'nodejs';
 
@@ -36,6 +37,12 @@ export async function POST(request: Request) {
       if (!/^[a-f0-9]{64}$/i.test(pinHash)) {
         return NextResponse.json({ error: 'Nieprawidłowy format PIN hash' }, { status: 400 });
       }
+
+      const isUnique = await isPinUnique(pinHash, targetId);
+      if (!isUnique) {
+        return NextResponse.json({ error: 'Ten PIN jest już przypisany do innego pracownika.' }, { status: 409 });
+      }
+
       const hashedPin = await hash(pinHash, 12);
       await pgQuery(
         `UPDATE public.employees SET password = $1 WHERE id = $2`,
